@@ -105,6 +105,9 @@ const CheckoutPage = () => {
                     productName: item.name,
                     quantity: parseInt(item.quantity),
                     price: parseFloat(item.price),
+                    // 👇 THÊM 2 DÒNG NÀY (QUAN TRỌNG ĐỂ CHECK KHO)
+                    size: item.size,
+                    color: item.color
                 })),
             };
 

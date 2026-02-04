@@ -45,11 +45,22 @@ const ProductCard = ({ product }) => {
         }
     };
 
+    // Tìm biến thể đầu tiên còn hàng để Quick Add
+    const firstAvailableVariant = product.variants?.find(v => v.stockQuantity > 0);
+    const isOutOfStock = !firstAvailableVariant;
+
     const handleAddToCart = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        addToCart(product);
-        alert("Đã thêm vào giỏ hàng!");
+        
+        if (isOutOfStock) {
+            alert("Sản phẩm tạm thời hết hàng!");
+            return;
+        }
+
+        // Add size/color mặc định của biến thể đầu tiên tìm thấy
+        addToCart(product, 1, firstAvailableVariant.size, firstAvailableVariant.color);
+        alert(`Đã thêm Size ${firstAvailableVariant.size} vào giỏ hàng!`);
     };
 
     return (
@@ -86,18 +97,27 @@ const ProductCard = ({ product }) => {
                     </span>
                 </button>
 
-                {/* Nút Quick Add */}
-                <div className="absolute inset-x-4 bottom-4 translate-y-full opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                    <button
-                        onClick={handleAddToCart}
-                        className="w-full flex items-center justify-center gap-2 rounded-full bg-white text-slate-900 py-3 text-sm font-bold shadow-lg hover:bg-gray-100"
-                    >
-                        <span className="material-symbols-outlined text-[18px]">
-                            shopping_cart
-                        </span>
-                        Quick Add
-                    </button>
-                </div>
+                {/* Nút Quick Add: Chỉ hiện khi còn hàng */}
+                {!isOutOfStock && (
+                    <div className="absolute inset-x-4 bottom-4 translate-y-full opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+                        <button
+                            onClick={handleAddToCart}
+                            className="w-full flex items-center justify-center gap-2 rounded-full bg-white text-slate-900 py-3 text-sm font-bold shadow-lg hover:bg-gray-100"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">
+                                shopping_cart
+                            </span>
+                            Quick Add
+                        </button>
+                    </div>
+                )}
+                
+                {/* Badge Out Of Stock */}
+                {isOutOfStock && (
+                     <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-center py-2 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
+                        Out of Stock
+                    </div>
+                )}
             </Link>
 
             <div className="flex flex-col">

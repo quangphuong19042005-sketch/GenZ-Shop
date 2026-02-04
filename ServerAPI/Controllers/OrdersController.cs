@@ -18,12 +18,11 @@ namespace ServerAPI.Controllers
         }
 
         // ==========================================
-        // CREATE ORDER (Fixed for Simple Products Table)
+        // CREATE ORDER (Đã sửa lỗi quản lý kho theo Variants)
         // ==========================================
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest req)
         {
-            // 1. Use Transaction to ensure data integrity
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
@@ -33,37 +32,39 @@ namespace ServerAPI.Controllers
                     return BadRequest(new { message = "Giỏ hàng trống!" });
                 }
 
-                // --- STEP 1: CHECK STOCK & DEDUCT QUANTITY ---
+                // --- BƯỚC 1: KIỂM TRA KHO CHI TIẾT THEO BIẾN THỂ (SIZE/COLOR) ---
                 foreach (var item in req.Items)
                 {
-                    // Find product directly in 'Products' table
-                    // Note: item.ProductVariantId is actually the ProductId sent from Frontend
-                    var product = await _context.Products.FindAsync(item.ProductVariantId);
+                    // 👇 TÌM BIẾN THỂ (VARIANT) TRONG BẢNG 'ProductVariants'
+                    // Lưu ý: Chúng ta tìm theo ProductId + Size + Color
+                    var variant = await _context.ProductVariants
+                        .FirstOrDefaultAsync(v => v.ProductId == item.ProductVariantId 
+                                               && v.Size == item.Size 
+                                               && v.Color == item.Color);
 
-                    // A. Check if product exists
-                    if (product == null)
+                    // A. Kiểm tra biến thể có tồn tại không
+                    if (variant == null)
                     {
-                        return BadRequest(new { message = $"Sản phẩm '{item.ProductName}' không còn tồn tại (ID cũ). Vui lòng xóa khỏi giỏ và chọn lại." });
+                        return BadRequest(new { message = $"Sản phẩm '{item.ProductName}' size {item.Size} màu {item.Color} không tồn tại!" });
                     }
 
-                    // B. Check stock quantity
-                    if (product.StockQuantity < item.Quantity)
+                    // B. Kiểm tra số lượng tồn kho của biến thể này
+                    if (variant.StockQuantity < item.Quantity)
                     {
-                        return BadRequest(new { message = $"Sản phẩm '{item.ProductName}' chỉ còn lại {product.StockQuantity} cái. Không đủ hàng!" });
+                        return BadRequest(new { message = $"Sản phẩm '{item.ProductName}' size {item.Size} chỉ còn lại {variant.StockQuantity} cái. Không đủ hàng!" });
                     }
 
-                    // C. Deduct stock
-                    product.StockQuantity -= item.Quantity;
+                    // C. Trừ kho của biến thể
+                    variant.StockQuantity -= item.Quantity;
                 }
 
-                // Save stock changes to DB first
+                // Lưu thay đổi kho vào DB
                 await _context.SaveChangesAsync(); 
 
-                // --- STEP 2: GENERATE ORDER CODE (A/Q/M) ---
+                // --- BƯỚC 2: TẠO MÃ ĐƠN HÀNG (Dựa trên Category sản phẩm đầu tiên) ---
                 string prefix = "M"; 
                 try 
                 {
-                    // Get Category of the first product to determine prefix
                     var firstProduct = await _context.Products.FindAsync(req.Items[0].ProductVariantId);
                     if (firstProduct != null && !string.IsNullOrEmpty(firstProduct.Category))
                     {
@@ -72,12 +73,12 @@ namespace ServerAPI.Controllers
                         else if (category == "Bottoms") prefix = "Q"; 
                     }
                 }
-                catch { } // Ignore code generation errors, default to M
+                catch { }
 
                 var randomNum = new Random().Next(100000, 999999);
                 string generatedCode = $"{prefix}{randomNum}"; 
 
-                // --- STEP 3: SAVE ORDER HEADER ---
+                // --- BƯỚC 3: LƯU THÔNG TIN ĐƠN HÀNG CHÍNH ---
                 var order = new Order
                 {
                     UserId = req.UserId,
@@ -92,27 +93,26 @@ namespace ServerAPI.Controllers
                 };
 
                 _context.Orders.Add(order);
-                await _context.SaveChangesAsync(); // Save Order to generate ID
+                await _context.SaveChangesAsync(); 
 
-                // --- STEP 4: SAVE ORDER ITEMS (Key Fix Here) ---
+                // --- BƯỚC 4: LƯU CHI TIẾT ĐƠN HÀNG (OrderItems) ---
                 foreach (var item in req.Items)
                 {
                     var orderItem = new OrderItem
                     {
                         OrderId = order.Id,
-                        
-                        // 👇 IMPORTANT FIX: Map to ProductId, NOT ProductVariantId
                         ProductId = item.ProductVariantId, 
-                        
                         ProductName = item.ProductName,
                         Quantity = item.Quantity,
-                        PriceAtPurchase = item.Price
+                        PriceAtPurchase = item.Price,
+                        // Nếu OrderItem của bạn có cột Size/Color, hãy lưu vào đây:
+                        Size = item.Size,
+                        Color = item.Color
                     };
                     _context.OrderItems.Add(orderItem);
                 }
                 await _context.SaveChangesAsync(); 
 
-                // 5. Commit Transaction
                 await transaction.CommitAsync();
 
                 return Ok(new { 
@@ -167,11 +167,9 @@ namespace ServerAPI.Controllers
             var order = await _context.Orders.FindAsync(id);
             if (order == null) return NotFound(new { message = "Không tìm thấy đơn hàng" });
 
-            // Delete child items first
             var items = _context.OrderItems.Where(i => i.OrderId == id);
             _context.OrderItems.RemoveRange(items);
 
-            // Delete parent order
             _context.Orders.Remove(order);
             await _context.SaveChangesAsync();
 

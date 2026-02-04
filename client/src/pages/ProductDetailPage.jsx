@@ -9,8 +9,15 @@ const ProductDetailPage = () => {
 
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
+    
+    // State cho việc chọn biến thể
     const [selectedSize, setSelectedSize] = useState("");
+    const [selectedColor, setSelectedColor] = useState("");
     const [quantity, setQuantity] = useState(1);
+    
+    // Danh sách Size và Color unique từ variants
+    const [availableSizes, setAvailableSizes] = useState([]);
+    const [availableColors, setAvailableColors] = useState([]);
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -18,7 +25,25 @@ const ProductDetailPage = () => {
                 const res = await axios.get(
                     `http://localhost:5165/api/products/${id}`,
                 );
-                setProduct(res.data);
+                const fetchedProduct = res.data;
+                setProduct(fetchedProduct);
+
+                // --- LOGIC XỬ LÝ BIẾN THỂ ---
+                if (fetchedProduct.variants && fetchedProduct.variants.length > 0) {
+                    // 1. Lấy list sizes unique
+                    const sizes = [...new Set(fetchedProduct.variants.map(v => v.size))];
+                    setAvailableSizes(sizes);
+                    // Mặc định chọn size đầu tiên nếu có
+                    if (sizes.length > 0) setSelectedSize(sizes[0]);
+
+                    // 2. Lấy list colors unique
+                    const colors = [...new Set(fetchedProduct.variants.map(v => v.color))];
+                    setAvailableColors(colors);
+                    // Mặc định chọn color đầu tiên nếu có
+                    if (colors.length > 0) setSelectedColor(colors[0]);
+                }
+                // -----------------------------
+
                 setLoading(false);
             } catch (error) {
                 console.error("Lỗi:", error);
@@ -28,12 +53,32 @@ const ProductDetailPage = () => {
         fetchProduct();
     }, [id]);
 
+    // Tìm variant cụ thể dựa trên Seleted Size & Color
+    const currentVariant = product?.variants?.find(
+        v => v.size === selectedSize && v.color === selectedColor
+    );
+
+    // Tính tồn kho hiện tại
+    const currentStock = currentVariant ? currentVariant.stockQuantity : 0;
+
     const handleAddToCart = () => {
-        if (!selectedSize) {
-            alert("Vui lòng chọn Size trước khi thêm vào giỏ!");
+        if (!selectedSize || !selectedColor) {
+            alert("Vui lòng chọn Size và Màu trước khi thêm vào giỏ!");
             return;
         }
-        addToCart(product, quantity, selectedSize, "Black");
+
+        if (!currentVariant) {
+             alert("Sản phẩm với tùy chọn này hiện không khả dụng!");
+             return;
+        }
+
+        if (currentStock < quantity) {
+             alert(`Chỉ còn ${currentStock} sản phẩm trong kho!`);
+             return;
+        }
+
+        // Truyền thêm variantId nếu cần, nhưng context hiện tại dùng size/color để phân biệt
+        addToCart(product, quantity, selectedSize, selectedColor);
         alert("Đã thêm vào giỏ hàng!");
     };
 
@@ -44,8 +89,6 @@ const ProductDetailPage = () => {
             </div>
         );
 
-    // 👇 1. KIỂM TRA TRẠNG THÁI ACTIVE
-    // Nếu không có sản phẩm HOẶC sản phẩm bị tắt (false/0) -> Báo lỗi ngay
     const isInactive =
         product?.isActive === false || product?.IsActive === false;
 
@@ -124,27 +167,61 @@ const ProductDetailPage = () => {
                         Select Size
                     </h3>
                     <div className="flex gap-3">
-                        {["S", "M", "L", "XL"].map((size) => (
-                            <button
-                                key={size}
-                                onClick={() => setSelectedSize(size)}
-                                className={`w-12 h-12 rounded-lg border font-bold transition-all flex items-center justify-center
-                                    ${
-                                        selectedSize === size
-                                            ? "bg-slate-900 text-white border-slate-900 shadow-md scale-110"
-                                            : "bg-white text-slate-900 border-gray-300 hover:border-slate-900 hover:bg-gray-50"
-                                    }`}
-                            >
-                                {size}
-                            </button>
-                        ))}
+                        {availableSizes.length > 0 ? (
+                             availableSizes.map((size) => (
+                                <button
+                                    key={size}
+                                    onClick={() => setSelectedSize(size)}
+                                    className={`w-12 h-12 rounded-lg border font-bold transition-all flex items-center justify-center
+                                        ${
+                                            selectedSize === size
+                                                ? "bg-slate-900 text-white border-slate-900 shadow-md scale-110"
+                                                : "bg-white text-slate-900 border-gray-300 hover:border-slate-900 hover:bg-gray-50"
+                                        }`}
+                                >
+                                    {size}
+                                </button>
+                            ))
+                        ) : (
+                            <span className="text-gray-400 italic">One Size</span>
+                        )}
                     </div>
                 </div>
+
+                 {/* Chọn Color (Nếu có) */}
+                 {availableColors.length > 0 && (
+                    <div>
+                        <h3 className="font-bold text-sm mb-3 uppercase text-gray-500">
+                            Select Color
+                        </h3>
+                        <div className="flex gap-3">
+                            {availableColors.map((color) => (
+                                <button
+                                    key={color}
+                                    onClick={() => setSelectedColor(color)}
+                                    className={`px-4 py-2 rounded-lg border font-bold transition-all flex items-center justify-center
+                                        ${
+                                            selectedColor === color
+                                                ? "bg-slate-900 text-white border-slate-900 shadow-md"
+                                                : "bg-white text-slate-900 border-gray-300 hover:border-slate-900 hover:bg-gray-50"
+                                        }`}
+                                >
+                                    {color}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                 )}
 
                 {/* Chọn Số lượng */}
                 <div>
                     <h3 className="font-bold text-sm mb-3 uppercase text-gray-500">
-                        Quantity
+                        Quantity 
+                        {currentVariant && (
+                            <span className="ml-2 text-xs font-normal text-gray-400">
+                                ({currentStock} available)
+                            </span>
+                        )}
                     </h3>
                     <div className="flex items-center gap-4 bg-gray-100 w-fit p-1 rounded-full border border-gray-200">
                         <button
@@ -161,6 +238,7 @@ const ProductDetailPage = () => {
                         <button
                             className="w-10 h-10 bg-white rounded-full font-bold shadow-sm hover:bg-gray-50 transition flex items-center justify-center"
                             onClick={() => setQuantity((q) => q + 1)}
+                            disabled={currentStock <= quantity}
                         >
                             +
                         </button>
@@ -169,8 +247,8 @@ const ProductDetailPage = () => {
 
                 {/* Nút Mua & Yêu thích */}
                 <div className="mt-6 flex gap-4">
-                    {/* Kiểm tra tồn kho trước khi hiện nút mua */}
-                    {product.stockQuantity > 0 ? (
+                    {/* Kiểm tra tồn kho cụ thể của biến thể */}
+                    {currentStock > 0 ? (
                         <button
                             onClick={handleAddToCart}
                             className="flex-1 bg-slate-900 text-white py-4 rounded-full font-bold hover:bg-slate-800 transition shadow-lg active:scale-95 flex items-center justify-center gap-2"
@@ -189,7 +267,7 @@ const ProductDetailPage = () => {
                             <span className="material-symbols-outlined">
                                 block
                             </span>
-                            OUT OF STOCK
+                            {currentVariant ? "OUT OF STOCK" : "UNAVAILABLE"}
                         </button>
                     )}
 

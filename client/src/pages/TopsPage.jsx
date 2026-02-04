@@ -4,7 +4,7 @@ import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import ProductCard from "../components/ProductCard";
 
-// Tách ra file riêng nếu dùng nhiều nơi
+// Skeleton Loading Component
 const ProductSkeleton = () => (
     <div className="flex flex-col gap-4 animate-pulse">
         <div className="w-full aspect-[3/4] bg-gray-200 dark:bg-gray-800 rounded-2xl"></div>
@@ -20,7 +20,6 @@ const CATEGORY_CHIPS = [
     "Utility Jackets",
     "Tank Tops",
 ];
-
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
 
 const TopsPage = () => {
@@ -39,19 +38,13 @@ const TopsPage = () => {
     useEffect(() => {
         const fetchTops = async () => {
             try {
-                // Bỏ setTimeout để load nhanh nhất có thể
                 const res = await axios.get(
                     "http://localhost:5165/api/products",
                 );
 
-                // 👇 ĐÃ SỬA: Lọc sản phẩm Active chuẩn xác
+                // Lọc sản phẩm thuộc Tops và đang Active
                 const topsOnly = res.data.filter(
-                    (p) =>
-                        p.category === "Tops" &&
-                        (p.isActive === true ||
-                            p.IsActive === true ||
-                            p.isActive === 1 ||
-                            p.IsActive === 1),
+                    (p) => p.category === "Tops" && p.isActive === true,
                 );
 
                 setAllProducts(topsOnly);
@@ -64,29 +57,31 @@ const TopsPage = () => {
         fetchTops();
     }, []);
 
-    // --- CORE LOGIC ---
+    // --- CORE LOGIC (FILTER & SORT) ---
     const processedProducts = useMemo(() => {
         let result = [...allProducts];
 
-        // Filter Category (Logic tìm kiếm theo tên)
+        // 1. Filter Category (Tìm kiếm theo tên sản phẩm dựa trên Category Chip)
         if (selectedCategory !== "All Tops") {
             const keyword = selectedCategory.toLowerCase();
-            // Tách từ khóa để tìm kiếm linh hoạt hơn
             const searchTerms = keyword.split(" ").filter((w) => w.length > 2);
-
             result = result.filter((p) => {
                 const productName = p.name.toLowerCase();
-                // Chỉ cần chứa 1 trong các từ khóa
                 return searchTerms.some((term) => productName.includes(term));
             });
         }
 
-        // Filter Size (Giả lập logic, cần data thực tế để hoạt động đúng)
+        // 2. Filter Size (ĐÃ SỬA: Lọc dựa trên bảng variants)
         if (selectedSize) {
-            // result = result.filter(p => p.sizes.includes(selectedSize));
+            result = result.filter((p) =>
+                // Giữ lại sản phẩm nếu có ít nhất 1 biến thể đúng Size và còn hàng
+                p.variants?.some(
+                    (v) => v.size === selectedSize && v.stockQuantity > 0,
+                ),
+            );
         }
 
-        // Sort
+        // 3. Sort
         switch (sortOption) {
             case "price-asc":
                 result.sort((a, b) => a.price - b.price);
@@ -111,7 +106,6 @@ const TopsPage = () => {
         currentPage * itemsPerPage,
     );
 
-    // Reset trang về 1 khi filter thay đổi
     useEffect(() => {
         setCurrentPage(1);
     }, [selectedCategory, selectedSize, sortOption]);
@@ -180,7 +174,7 @@ const TopsPage = () => {
             </motion.div>
 
             <div className="flex gap-10">
-                {/* Sidebar Filter - Desktop Only */}
+                {/* Sidebar Filter */}
                 <aside className="w-64 shrink-0 hidden lg:block sticky top-28 h-fit">
                     <div className="flex items-center justify-between mb-8">
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white">
@@ -311,7 +305,6 @@ const TopsPage = () => {
                                     chevron_left
                                 </span>
                             </button>
-
                             <div className="flex gap-2">
                                 {Array.from(
                                     { length: totalPages },
@@ -320,17 +313,12 @@ const TopsPage = () => {
                                     <button
                                         key={page}
                                         onClick={() => setCurrentPage(page)}
-                                        className={`w-10 h-10 rounded-full font-bold transition-all ${
-                                            currentPage === page
-                                                ? "bg-primary text-white shadow-lg shadow-primary/40"
-                                                : "text-slate-400 hover:bg-slate-800 hover:text-white"
-                                        }`}
+                                        className={`w-10 h-10 rounded-full font-bold transition-all ${currentPage === page ? "bg-primary text-white shadow-lg shadow-primary/40" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
                                     >
                                         {page}
                                     </button>
                                 ))}
                             </div>
-
                             <button
                                 onClick={() =>
                                     setCurrentPage((p) =>

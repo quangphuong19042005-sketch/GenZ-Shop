@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using ServerAPI.Data;
+using System.Text.Json.Serialization; // 👈 1. ĐÃ THÊM DÒNG NÀY (Bắt buộc)
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Cấu hình kết nối MySQL (Thay password của bạn vào)
-var connectionString = "server=localhost;user=root;password=123456;database=streetwear_db";// Lưu ý: password điền sau dấu bằng, nếu không có pass thì để trống
+// 1. Cấu hình kết nối MySQL
+var connectionString = "server=localhost;user=root;password=123456;database=streetwear_db"; // Kiểm tra lại pass nếu cần
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
@@ -18,7 +19,13 @@ builder.Services.AddCors(options =>
                         .AllowAnyHeader());
 });
 
-builder.Services.AddControllers();
+// 👇 3. QUAN TRỌNG: Cấu hình JSON để chặn lỗi vòng lặp (Fix lỗi 500)
+builder.Services.AddControllers().AddJsonOptions(x =>
+{
+    x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+});
+// 👆 Thay thế cho dòng builder.Services.AddControllers(); cũ
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

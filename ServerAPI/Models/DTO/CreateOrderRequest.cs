@@ -12,8 +12,13 @@ namespace ServerAPI.Models.DTO
 
     public class OrderItemDto
     {
-        public int ProductVariantId { get; set; } // Nếu bạn dùng bảng variant, nếu không thì dùng ProductId
+        public int ProductVariantId { get; set; } 
         public string ProductName { get; set; }
+        
+        // 👇 THÊM 2 DÒNG NÀY ĐỂ FIX LỖI CS1061
+        public string Size { get; set; }  
+        public string Color { get; set; } 
+        
         public int Quantity { get; set; }
         public decimal Price { get; set; }
     }
