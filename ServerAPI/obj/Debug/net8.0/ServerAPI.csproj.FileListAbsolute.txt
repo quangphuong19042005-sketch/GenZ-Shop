@@ -107,3 +107,4 @@ D:\f8\project_DA\GenZ-Shop\ServerAPI\obj\Debug\net8.0\ServerAPI.pdb
 D:\f8\project_DA\GenZ-Shop\ServerAPI\obj\Debug\net8.0\ServerAPI.genruntimeconfig.cache
 D:\f8\project_DA\GenZ-Shop\ServerAPI\obj\Debug\net8.0\ref\ServerAPI.dll
 D:\f8\project_DA\GenZ-Shop\ServerAPI\bin\Debug\net8.0\ServerAPI.staticwebassets.runtime.json
+D:\f8\project_DA\GenZ-Shop\ServerAPI\obj\Debug\net8.0\ServerAPI.sourcelink.json

@@ -7,7 +7,7 @@ const ProductManagement = () => {
     const [showModal, setShowModal] = useState(false);
 
     // --- State cho chức năng SỬA ---
-    const [editingId, setEditingId] = useState(null); // Lưu ID sản phẩm đang sửa (null = thêm mới)
+    const [editingId, setEditingId] = useState(null);
 
     const [filterCategory, setFilterCategory] = useState("All");
 
@@ -17,6 +17,10 @@ const ProductManagement = () => {
     const [stock, setStock] = useState(10);
     const [category, setCategory] = useState("Tops");
     const [description, setDescription] = useState("");
+
+    // 👇 1. Thêm state cho trạng thái (Mặc định là true/bật)
+    const [isActive, setIsActive] = useState(true);
+
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
 
@@ -26,6 +30,7 @@ const ProductManagement = () => {
 
     const fetchProducts = async () => {
         try {
+            // LƯU Ý: Backend API này cần trả về CẢ sản phẩm Active = false
             const res = await axios.get("http://localhost:5165/api/products");
             setProducts(res.data);
             setLoading(false);
@@ -48,40 +53,69 @@ const ProductManagement = () => {
         }
     };
 
-    // --- HÀM RESET FORM (Dùng chung cho Thêm, Sửa, Đóng modal) ---
     const resetForm = () => {
         setName("");
         setPrice("");
         setStock(10);
         setCategory("Tops");
         setDescription("");
+        setIsActive(true); // Reset về true
         setSelectedFile(null);
         setPreviewUrl(null);
-        setEditingId(null); // Reset trạng thái sửa
+        setEditingId(null);
     };
 
-    // --- XỬ LÝ KHI BẤM NÚT SỬA ---
     const handleEditClick = (product) => {
-        setEditingId(product.id); // Đánh dấu là đang sửa ID này
-
-        // Đổ dữ liệu cũ vào form
+        setEditingId(product.id);
         setName(product.name);
         setPrice(product.price);
         setStock(product.stockQuantity);
         setCategory(product.category);
         setDescription(product.description || "");
+        setIsActive(product.isActive); // 👇 Lấy trạng thái từ sản phẩm
 
-        // Hiển thị ảnh cũ
-        // Lưu ý: Thêm http://localhost... nếu link trong DB là đường dẫn tương đối
         const imgLink = product.imageUrl.startsWith("http")
             ? product.imageUrl
             : `http://localhost:5165${product.imageUrl}`;
         setPreviewUrl(imgLink);
 
-        setShowModal(true); // Mở modal
+        setShowModal(true);
     };
 
-    // --- XỬ LÝ LƯU (THÊM HOẶC SỬA) ---
+    // 👇 2. HÀM BẬT/TẮT NHANH TRÊN BẢNG
+    const handleToggleStatus = async (product) => {
+        try {
+            // Tạo FormData để update, giữ nguyên thông tin cũ, chỉ đổi IsActive
+            const formData = new FormData();
+            formData.append("Name", product.name);
+            formData.append("Price", product.price);
+            formData.append("StockQuantity", product.stockQuantity);
+            formData.append("Category", product.category);
+            formData.append("Description", product.description || "");
+
+            // Đảo ngược trạng thái hiện tại
+            const newStatus = !product.isActive;
+            formData.append("IsActive", newStatus);
+
+            // Gọi API Update (PUT)
+            const res = await axios.put(
+                `http://localhost:5165/api/products/${product.id}`,
+                formData,
+                { headers: { "Content-Type": "multipart/form-data" } },
+            );
+
+            // Cập nhật State Frontend ngay lập tức
+            setProducts(
+                products.map((p) =>
+                    p.id === product.id ? { ...p, isActive: newStatus } : p,
+                ),
+            );
+        } catch (error) {
+            console.error("Lỗi cập nhật trạng thái:", error);
+            alert("Không thể cập nhật trạng thái!");
+        }
+    };
+
     const handleSave = async (e) => {
         e.preventDefault();
         try {
@@ -92,25 +126,24 @@ const ProductManagement = () => {
             formData.append("Category", category);
             formData.append("Description", description);
 
+            // 👇 Gửi trạng thái lên Server
+            formData.append("IsActive", isActive);
+
             if (selectedFile) {
                 formData.append("ImageFile", selectedFile);
             }
 
             if (editingId) {
-                // === LOGIC SỬA (PUT) ===
                 const res = await axios.put(
                     `http://localhost:5165/api/products/${editingId}`,
                     formData,
                     { headers: { "Content-Type": "multipart/form-data" } },
                 );
-
-                // Cập nhật lại sản phẩm trong danh sách hiển thị (không cần load lại trang)
                 setProducts(
                     products.map((p) => (p.id === editingId ? res.data : p)),
                 );
                 alert("Cập nhật thành công!");
             } else {
-                // === LOGIC THÊM MỚI (POST) ===
                 const res = await axios.post(
                     "http://localhost:5165/api/products",
                     formData,
@@ -129,7 +162,7 @@ const ProductManagement = () => {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm("Bạn có chắc muốn xóa?")) {
+        if (window.confirm("Bạn có chắc muốn xóa VĨNH VIỄN sản phẩm này?")) {
             try {
                 await axios.delete(`http://localhost:5165/api/products/${id}`);
                 setProducts(products.filter((p) => p.id !== id));
@@ -184,9 +217,12 @@ const ProductManagement = () => {
                     <thead className="bg-gray-50 dark:bg-[#282e39] text-gray-500 font-bold uppercase text-xs">
                         <tr>
                             <th className="px-6 py-4">Sản phẩm</th>
-                            <th className="px-6 py-4">Danh mục</th>
                             <th className="px-6 py-4">Giá</th>
                             <th className="px-6 py-4">Kho</th>
+                            {/* 👇 THÊM CỘT TRẠNG THÁI */}
+                            <th className="px-6 py-4 text-center">
+                                Trạng thái
+                            </th>
                             <th className="px-6 py-4 text-right">Hành động</th>
                         </tr>
                     </thead>
@@ -194,7 +230,11 @@ const ProductManagement = () => {
                         {filteredProducts.map((product) => (
                             <tr
                                 key={product.id}
-                                className="hover:bg-gray-50 dark:hover:bg-[#282e39]/50 transition-colors"
+                                className={`transition-colors ${
+                                    !product.isActive
+                                        ? "bg-gray-100 dark:bg-gray-800 opacity-75"
+                                        : "hover:bg-gray-50 dark:hover:bg-[#282e39]/50"
+                                }`}
                             >
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
@@ -202,22 +242,22 @@ const ProductManagement = () => {
                                             <img
                                                 src={`http://localhost:5165${product.imageUrl}`}
                                                 alt={product.name}
-                                                className="w-full h-full object-cover"
+                                                className={`w-full h-full object-cover ${!product.isActive && "grayscale"}`} // Xám ảnh nếu ẩn
                                                 onError={(e) =>
                                                     (e.target.src =
                                                         "https://placehold.co/100?text=No+Img")
                                                 }
                                             />
                                         </div>
-                                        <span className="font-bold text-slate-900 dark:text-white line-clamp-1 max-w-[200px]">
-                                            {product.name}
-                                        </span>
+                                        <div>
+                                            <span className="font-bold text-slate-900 dark:text-white line-clamp-1 max-w-[200px]">
+                                                {product.name}
+                                            </span>
+                                            <span className="text-xs text-gray-400">
+                                                {product.category}
+                                            </span>
+                                        </div>
                                     </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-bold text-gray-600 dark:text-gray-300">
-                                        {product.category}
-                                    </span>
                                 </td>
                                 <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">
                                     ${product.price}
@@ -229,9 +269,31 @@ const ProductManagement = () => {
                                         {product.stockQuantity || 0}
                                     </span>
                                 </td>
+
+                                {/* 👇 UI TOGGLE SWITCH */}
+                                <td className="px-6 py-4 text-center">
+                                    <button
+                                        onClick={() =>
+                                            handleToggleStatus(product)
+                                        }
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                                            product.isActive
+                                                ? "bg-green-500"
+                                                : "bg-gray-300 dark:bg-gray-600"
+                                        }`}
+                                    >
+                                        <span
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                product.isActive
+                                                    ? "translate-x-6"
+                                                    : "translate-x-1"
+                                            }`}
+                                        />
+                                    </button>
+                                </td>
+
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex items-center justify-end gap-2">
-                                        {/* NÚT SỬA */}
                                         <button
                                             onClick={() =>
                                                 handleEditClick(product)
@@ -244,13 +306,12 @@ const ProductManagement = () => {
                                             </span>
                                         </button>
 
-                                        {/* NÚT XÓA */}
                                         <button
                                             onClick={() =>
                                                 handleDelete(product.id)
                                             }
                                             className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                                            title="Xóa"
+                                            title="Xóa vĩnh viễn"
                                         >
                                             <span className="material-symbols-outlined text-[20px]">
                                                 delete
@@ -264,7 +325,7 @@ const ProductManagement = () => {
                 </table>
             </div>
 
-            {/* MODAL FORM (DÙNG CHUNG CHO THÊM VÀ SỬA) */}
+            {/* MODAL FORM */}
             {showModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
                     <div className="bg-white dark:bg-[#1e1e1e] w-full max-w-lg rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -277,6 +338,7 @@ const ProductManagement = () => {
                             onSubmit={handleSave}
                             className="flex flex-col gap-4"
                         >
+                            {/* ... Các input Tên, Giá, Kho giữ nguyên ... */}
                             <div>
                                 <label className="block text-sm font-bold mb-1 text-gray-500">
                                     Tên sản phẩm
@@ -342,7 +404,25 @@ const ProductManagement = () => {
                                 </div>
                             </div>
 
-                            {/* Mô tả */}
+                            {/* 👇 CHECKBOX TRONG FORM (Optional) */}
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="isActiveInput"
+                                    checked={isActive}
+                                    onChange={(e) =>
+                                        setIsActive(e.target.checked)
+                                    }
+                                    className="w-5 h-5 cursor-pointer accent-primary"
+                                />
+                                <label
+                                    htmlFor="isActiveInput"
+                                    className="text-sm font-bold text-slate-700 dark:text-gray-300 cursor-pointer"
+                                >
+                                    Đang kinh doanh (Active)
+                                </label>
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-bold mb-1 text-gray-500">
                                     Mô tả
