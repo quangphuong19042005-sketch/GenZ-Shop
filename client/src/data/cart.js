@@ -1,0 +1,32 @@
+export const cartItems = [
+    {
+        id: 1,
+        name: "Graphic Tee - Oversized Fit",
+        price: 45.0,
+        image: "https://lh3.googleusercontent.com/aida-public/AB6AXuASrxiFOLJUpqv2869jcO21pbUBrjhhkI1qg0RMX20Bgzz8hW2MzQvCI_jrtbS3fCU6oV4clhqAgch80YzOo2_8-9-DupLU1d96vsvKHII6UNoynEgyQ0nFD_rw2TavL4ebNKab52cXUOylZ8rgKAhwB5rdmX_o17pod1meA0rEmcODHxcDOdyuNQVfPeSkstnigYChNqku3CgLs0o5eN8XEfYjMtVaBpK-txFC9Nj8WVz4N8Qlo3oWoSvMz1N5p819Q1z4kL4Rtue1",
+        color: "Black",
+        size: "L",
+        stockStatus: "In Stock",
+        quantity: 1,
+    },
+    {
+        id: 2,
+        name: "Technical Cargo Joggers",
+        price: 85.0,
+        image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBZlZHG-XXVy31EiBYPoz9Zkc6-pr0S_GvsFNHc4L11D9MaMFDkF4PTBkKkOts0bg8mPsckwHnC2vUPTVYjlML__YMmGOAxJTgCMmYihnri4hW5epp5mGv1e0h8Slu-pUUaLuZUC8z96ksqA8OiSVqrjY3oo37PA95U8JmrSBSk91T3eAHacNCMpvkvMW4bFslxbSQzjErNg1vF6HeNKSRp88EUsneYcRuGGevo2itSdlkeeaWFT48gVypsg3OJ5S0IimX-b1aSAjIr",
+        color: "Olive",
+        size: "M",
+        stockStatus: "Low Stock",
+        quantity: 1,
+    },
+    {
+        id: 3,
+        name: "Reflective Dad Cap",
+        price: 35.0,
+        image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCsV3456lEFutJnxsvkvgyej-gp9Sf1C155U2euoUE0urmPWE1EKgN2aIe2Piw8z5d8VWnN55WKH4vs9FPQFFnj6I8aFL_JBmtPgDXSj5-gFy1kAt3RDFC0vRjOkpZMlgJfUn7oHneX0gvQwgkM8Xw8iXy8prcpF0-exVRpXLlfvr5eBHAy1MrD1zoqHU2NEhN7oC7jw7A_SNB3LheJjNAeH1XJksZwH8wm4fCnyJuFUP60iOLnYfPoQv39kGlP1AxrTBJRxl_-yi-V",
+        color: "Silver",
+        size: "One Size",
+        stockStatus: "In Stock",
+        quantity: 1,
+    },
+];
