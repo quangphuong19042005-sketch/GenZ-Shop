@@ -34,7 +34,7 @@ const ProductDetailPage = () => {
             return;
         }
         addToCart(product, quantity, selectedSize, "Black");
-        alert("Đã thêm vào giỏ hàng!"); // Thêm thông báo
+        alert("Đã thêm vào giỏ hàng!");
     };
 
     if (loading)
@@ -43,34 +43,53 @@ const ProductDetailPage = () => {
                 Đang tải sản phẩm...
             </div>
         );
-    if (!product)
+
+    // 👇 1. KIỂM TRA TRẠNG THÁI ACTIVE
+    // Nếu không có sản phẩm HOẶC sản phẩm bị tắt (false/0) -> Báo lỗi ngay
+    const isInactive =
+        product?.isActive === false || product?.IsActive === false;
+
+    if (!product || isInactive)
         return (
-            <div className="text-center py-20 font-bold">
-                Không tìm thấy sản phẩm!
+            <div className="text-center py-40 flex flex-col items-center justify-center">
+                <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">
+                    sentiment_dissatisfied
+                </span>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                    Sản phẩm không tồn tại
+                </h2>
+                <p className="text-gray-500 mt-2">
+                    Sản phẩm này có thể đã bị xóa hoặc ngừng kinh doanh.
+                </p>
+                <Link
+                    to="/shop"
+                    className="mt-6 text-primary font-bold hover:underline"
+                >
+                    Quay lại cửa hàng
+                </Link>
             </div>
         );
 
-    // --- 👇 ĐOẠN CODE SỬA LỖI ẢNH (QUAN TRỌNG) 👇 ---
+    // --- XỬ LÝ ẢNH ---
     let imageUrl =
         product.imageUrl || product.image_url || "/images/placeholder.png";
 
-    // Nếu đường dẫn bắt đầu bằng dấu /, nối thêm localhost vào
     if (imageUrl && imageUrl.startsWith("/")) {
         imageUrl = `http://localhost:5165${imageUrl}`;
     }
-    // ------------------------------------------------
+    // ----------------
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-2 gap-10">
             {/* Cột Trái: Ảnh */}
-            <div className="bg-gray-100 rounded-2xl overflow-hidden shadow-sm aspect-[3/4] md:aspect-auto">
+            <div className="bg-gray-100 rounded-2xl overflow-hidden shadow-sm aspect-[3/4] md:aspect-auto group">
                 <img
                     src={imageUrl}
                     alt={product.name}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     onError={(e) => {
                         e.target.src =
-                            "https://placehold.co/600x800?text=No+Image"; // Ảnh thay thế nếu lỗi
+                            "https://placehold.co/600x800?text=No+Image";
                     }}
                 />
             </div>
@@ -87,7 +106,7 @@ const ProductDetailPage = () => {
                     </span>
                 </div>
 
-                <h1 className="text-4xl font-black text-slate-900 dark:text-white uppercase">
+                <h1 className="text-4xl font-black text-slate-900 dark:text-white uppercase leading-tight">
                     {product.name}
                 </h1>
 
@@ -129,7 +148,7 @@ const ProductDetailPage = () => {
                     </h3>
                     <div className="flex items-center gap-4 bg-gray-100 w-fit p-1 rounded-full border border-gray-200">
                         <button
-                            className="w-10 h-10 bg-white rounded-full font-bold shadow-sm hover:bg-gray-50 transition"
+                            className="w-10 h-10 bg-white rounded-full font-bold shadow-sm hover:bg-gray-50 transition flex items-center justify-center"
                             onClick={() =>
                                 setQuantity((q) => Math.max(1, q - 1))
                             }
@@ -140,7 +159,7 @@ const ProductDetailPage = () => {
                             {quantity}
                         </span>
                         <button
-                            className="w-10 h-10 bg-white rounded-full font-bold shadow-sm hover:bg-gray-50 transition"
+                            className="w-10 h-10 bg-white rounded-full font-bold shadow-sm hover:bg-gray-50 transition flex items-center justify-center"
                             onClick={() => setQuantity((q) => q + 1)}
                         >
                             +
@@ -148,17 +167,31 @@ const ProductDetailPage = () => {
                     </div>
                 </div>
 
-                {/* Nút Mua */}
+                {/* Nút Mua & Yêu thích */}
                 <div className="mt-6 flex gap-4">
-                    <button
-                        onClick={handleAddToCart}
-                        className="flex-1 bg-slate-900 text-white py-4 rounded-full font-bold hover:bg-slate-800 transition shadow-lg active:scale-95 flex items-center justify-center gap-2"
-                    >
-                        <span className="material-symbols-outlined">
-                            shopping_cart
-                        </span>
-                        ADD TO CART - ${(product.price * quantity).toFixed(2)}
-                    </button>
+                    {/* Kiểm tra tồn kho trước khi hiện nút mua */}
+                    {product.stockQuantity > 0 ? (
+                        <button
+                            onClick={handleAddToCart}
+                            className="flex-1 bg-slate-900 text-white py-4 rounded-full font-bold hover:bg-slate-800 transition shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            <span className="material-symbols-outlined">
+                                shopping_cart
+                            </span>
+                            ADD TO CART - $
+                            {(product.price * quantity).toFixed(2)}
+                        </button>
+                    ) : (
+                        <button
+                            disabled
+                            className="flex-1 bg-gray-300 text-gray-500 py-4 rounded-full font-bold cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            <span className="material-symbols-outlined">
+                                block
+                            </span>
+                            OUT OF STOCK
+                        </button>
+                    )}
 
                     <button className="size-16 flex items-center justify-center rounded-full border border-gray-300 hover:border-red-500 hover:text-red-500 transition hover:bg-red-50">
                         <span className="material-symbols-outlined">

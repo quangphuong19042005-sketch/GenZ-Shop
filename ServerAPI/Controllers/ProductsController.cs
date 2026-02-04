@@ -6,7 +6,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ServerAPI.Controllers
 {
-    // 1. Cập nhật DTO: Thêm IsActive
+    // 1. Cập nhật DTO: Thêm IsActive để nhận dữ liệu từ Frontend
     public class ProductCreateDto
     {
         [Required(ErrorMessage = "Tên sản phẩm là bắt buộc")]
@@ -21,7 +21,7 @@ namespace ServerAPI.Controllers
         [Range(0, int.MaxValue, ErrorMessage = "Số lượng tồn kho không được âm")]
         public int StockQuantity { get; set; }
         
-        // 👇 THÊM DÒNG NÀY ĐỂ NHẬN TRẠNG THÁI TỪ FRONTEND
+        // 👇 QUAN TRỌNG: Thêm dòng này để nhận trạng thái từ Frontend
         public bool IsActive { get; set; } = true; 
 
         public IFormFile? ImageFile { get; set; }
@@ -47,6 +47,15 @@ namespace ServerAPI.Controllers
             return await _context.Products.OrderByDescending(p => p.Id).ToListAsync();
         }
 
+        // GET ONE (Lấy chi tiết 1 sản phẩm theo ID) - Đã thêm ở bước trước
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Product>> GetProduct(int id)
+        {
+            var product = await _context.Products.FindAsync(id);
+            if (product == null) return NotFound(new { message = "Không tìm thấy sản phẩm" });
+            return product;
+        }
+
         // CREATE
         [HttpPost]
         public async Task<ActionResult<Product>> CreateProduct([FromForm] ProductCreateDto productDto)
@@ -61,7 +70,7 @@ namespace ServerAPI.Controllers
                     Description = productDto.Description,
                     StockQuantity = productDto.StockQuantity,
                     
-                    // 👇 Gán giá trị từ DTO
+                    // 👇 Gán giá trị IsActive từ DTO vào Model
                     IsActive = productDto.IsActive 
                 };
 
@@ -78,7 +87,7 @@ namespace ServerAPI.Controllers
             }
         }
 
-        // UPDATE (Quan trọng nhất để sửa lỗi của bạn)
+        // UPDATE (Đây là hàm quan trọng nhất để sửa lỗi của bạn)
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateProduct(int id, [FromForm] ProductCreateDto productDto)
         {
@@ -87,19 +96,22 @@ namespace ServerAPI.Controllers
 
             try
             {
+                // Cập nhật các trường thông tin cơ bản
                 existingProduct.Name = productDto.Name;
                 existingProduct.Price = productDto.Price;
                 existingProduct.Category = productDto.Category;
                 existingProduct.Description = productDto.Description;
                 existingProduct.StockQuantity = productDto.StockQuantity;
 
-                // 👇 QUAN TRỌNG: Cập nhật trạng thái vào Database
+                // 👇 QUAN TRỌNG: Cập nhật trạng thái IsActive vào Database
+                // Nếu thiếu dòng này, trạng thái sẽ không bao giờ được lưu!
                 existingProduct.IsActive = productDto.IsActive;
 
+                // Xử lý cập nhật ảnh nếu có ảnh mới
                 if (productDto.ImageFile != null && productDto.ImageFile.Length > 0)
                 {
-                    DeleteImage(existingProduct.ImageUrl);
-                    existingProduct.ImageUrl = await SaveImage(productDto.ImageFile, productDto.Category);
+                    DeleteImage(existingProduct.ImageUrl); // Xóa ảnh cũ
+                    existingProduct.ImageUrl = await SaveImage(productDto.ImageFile, productDto.Category); // Lưu ảnh mới
                 }
 
                 await _context.SaveChangesAsync();
@@ -111,22 +123,30 @@ namespace ServerAPI.Controllers
             }
         }
 
-        // DELETE (Soft Delete - Đã làm ở bước trước)
+        // DELETE (Soft Delete hoặc Hard Delete tùy bạn chọn)
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
             var product = await _context.Products.FindAsync(id);
-            if (product == null) return NotFound();
+            if (product == null) return NotFound(new { message = "Không tìm thấy sản phẩm" });
             
-            // Xóa thật (hoặc soft delete tùy bạn chọn ở bước trước)
-            _context.Products.Remove(product); 
-            await _context.SaveChangesAsync();
-            
-            return Ok(new { success = true });
+            try 
+            {
+                // Cách 1: Xóa cứng (Xóa bay khỏi DB)
+                _context.Products.Remove(product); 
+                
+                // Cách 2: Xóa mềm (Chỉ ẩn đi) - Nếu bạn muốn dùng cách này thì bỏ comment dòng dưới và comment dòng trên
+                // product.IsActive = false;
+
+                await _context.SaveChangesAsync();
+                return Ok(new { success = true, message = "Đã xóa sản phẩm thành công" });
+            }
+            catch (Exception ex)
+            {
+                // Bắt lỗi ràng buộc khóa ngoại (ví dụ: sản phẩm đã có trong đơn hàng)
+                return StatusCode(500, new { message = "Không thể xóa sản phẩm này vì đã có dữ liệu liên quan." });
+            }
         }
-        
-        // ... (Giữ nguyên các hàm GetProduct, SaveImage, DeleteImage cũ của bạn) ...
-        // (Để code ngắn gọn mình không paste lại đoạn Helper ở đây, bạn giữ nguyên nhé)
         
         // ==========================================
         // 👇 CÁC HÀM PHỤ TRỢ (HELPER METHODS) 👇
@@ -135,24 +155,38 @@ namespace ServerAPI.Controllers
         private async Task<string> SaveImage(IFormFile? imageFile, string category)
         {
             if (imageFile == null || imageFile.Length == 0) return "/images/placeholder.png";
+            
             var extension = Path.GetExtension(imageFile.FileName).ToLower();
             string folderName = "others";
-            if (!string.IsNullOrEmpty(category)) folderName = category.ToLower().Trim().Replace(" ", "-");
+            
+            if (!string.IsNullOrEmpty(category)) 
+                folderName = category.ToLower().Trim().Replace(" ", "-");
+            
             var uploadPath = Path.Combine(_environment.WebRootPath, "images", folderName);
+            
             if (!Directory.Exists(uploadPath)) Directory.CreateDirectory(uploadPath);
+            
             var fileName = Guid.NewGuid().ToString() + extension;
             var filePath = Path.Combine(uploadPath, fileName);
-            using (var stream = new FileStream(filePath, FileMode.Create)) { await imageFile.CopyToAsync(stream); }
+            
+            using (var stream = new FileStream(filePath, FileMode.Create)) 
+            { 
+                await imageFile.CopyToAsync(stream); 
+            }
+            
             return $"/images/{folderName}/{fileName}";
         }
 
         private void DeleteImage(string? imageUrl)
         {
             if (string.IsNullOrEmpty(imageUrl) || imageUrl.Contains("placeholder.png")) return;
+            
             try {
                 var relativePath = imageUrl.TrimStart('/');
                 var filePath = Path.Combine(_environment.WebRootPath, relativePath);
-                if (System.IO.File.Exists(filePath)) System.IO.File.Delete(filePath);
+                
+                if (System.IO.File.Exists(filePath)) 
+                    System.IO.File.Delete(filePath);
             } catch { }
         }
     }
