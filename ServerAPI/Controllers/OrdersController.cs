@@ -18,7 +18,7 @@ namespace ServerAPI.Controllers
         }
 
         // ==========================================
-        // CREATE ORDER (Đã sửa lỗi quản lý kho theo Variants)
+        // 1. CREATE ORDER (Tạo đơn hàng)
         // ==========================================
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest req)
@@ -35,33 +35,27 @@ namespace ServerAPI.Controllers
                 // --- BƯỚC 1: KIỂM TRA KHO CHI TIẾT THEO BIẾN THỂ (SIZE/COLOR) ---
                 foreach (var item in req.Items)
                 {
-                    // 👇 TÌM BIẾN THỂ (VARIANT) TRONG BẢNG 'ProductVariants'
-                    // Lưu ý: Chúng ta tìm theo ProductId + Size + Color
                     var variant = await _context.ProductVariants
                         .FirstOrDefaultAsync(v => v.ProductId == item.ProductVariantId 
                                                && v.Size == item.Size 
                                                && v.Color == item.Color);
 
-                    // A. Kiểm tra biến thể có tồn tại không
                     if (variant == null)
                     {
                         return BadRequest(new { message = $"Sản phẩm '{item.ProductName}' size {item.Size} màu {item.Color} không tồn tại!" });
                     }
 
-                    // B. Kiểm tra số lượng tồn kho của biến thể này
                     if (variant.StockQuantity < item.Quantity)
                     {
                         return BadRequest(new { message = $"Sản phẩm '{item.ProductName}' size {item.Size} chỉ còn lại {variant.StockQuantity} cái. Không đủ hàng!" });
                     }
 
-                    // C. Trừ kho của biến thể
                     variant.StockQuantity -= item.Quantity;
                 }
 
-                // Lưu thay đổi kho vào DB
                 await _context.SaveChangesAsync(); 
 
-                // --- BƯỚC 2: TẠO MÃ ĐƠN HÀNG (Dựa trên Category sản phẩm đầu tiên) ---
+                // --- BƯỚC 2: TẠO MÃ ĐƠN HÀNG ---
                 string prefix = "M"; 
                 try 
                 {
@@ -105,7 +99,6 @@ namespace ServerAPI.Controllers
                         ProductName = item.ProductName,
                         Quantity = item.Quantity,
                         PriceAtPurchase = item.Price,
-                        // Nếu OrderItem của bạn có cột Size/Color, hãy lưu vào đây:
                         Size = item.Size,
                         Color = item.Color
                     };
@@ -130,7 +123,28 @@ namespace ServerAPI.Controllers
             }
         }
 
-        // GET: api/orders/user/5
+        // ==========================================
+        // 2. GET ORDER DETAILS (Lấy chi tiết đơn hàng - MỚI THÊM)
+        // ==========================================
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetOrderById(int id)
+        {
+            var order = await _context.Orders
+                .Include(o => o.OrderItems)     // Kèm danh sách món
+                .ThenInclude(oi => oi.Product)  // Kèm thông tin sản phẩm (ảnh, tên gốc)
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+            if (order == null)
+            {
+                return NotFound(new { message = "Không tìm thấy đơn hàng" });
+            }
+
+            return Ok(order);
+        }
+
+        // ==========================================
+        // 3. GET ORDERS BY USER (Lịch sử mua hàng)
+        // ==========================================
         [HttpGet("user/{userId}")]
         public async Task<ActionResult<IEnumerable<Order>>> GetOrdersByUser(int userId)
         {
@@ -140,14 +154,18 @@ namespace ServerAPI.Controllers
                 .ToListAsync();
         }
 
-        // GET: api/orders (Admin)
+        // ==========================================
+        // 4. GET ALL ORDERS (Dành cho Admin)
+        // ==========================================
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Order>>> GetAllOrders()
         {
             return await _context.Orders.OrderByDescending(o => o.CreatedAt).ToListAsync();
         }
 
-        // PUT: api/orders/5/status
+        // ==========================================
+        // 5. UPDATE STATUS (Cập nhật trạng thái)
+        // ==========================================
         [HttpPut("{id}/status")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status)
         {
@@ -160,7 +178,9 @@ namespace ServerAPI.Controllers
             return Ok(new { success = true, message = "Đã cập nhật trạng thái", data = order });
         }
 
-        // DELETE: api/orders/5
+        // ==========================================
+        // 6. DELETE ORDER (Xóa đơn hàng)
+        // ==========================================
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteOrder(int id)
         {

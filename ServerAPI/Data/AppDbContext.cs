@@ -15,5 +15,6 @@ namespace ServerAPI.Data
         public DbSet<UserAddress> UserAddresses { get; set; }
         public DbSet<Coupon> Coupons { get; set; }
         public DbSet<ProductVariant> ProductVariants { get; set; }
+        public DbSet<Review> Reviews { get; set; }
     }
 }

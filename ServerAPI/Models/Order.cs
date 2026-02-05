@@ -21,5 +21,6 @@ namespace ServerAPI.Models
         [Column("status")] public string Status { get; set; }
         [Column("payment_method")] public string PaymentMethod { get; set; }
         [Column("created_at")] public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
     }
 }
