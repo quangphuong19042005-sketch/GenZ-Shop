@@ -13,11 +13,10 @@ const ProductSkeleton = () => (
     </div>
 );
 
-// --- 👇 COMPONENT BANNER MỚI (Tương tự TopsPage nhưng đổi nội dung) ---
+// --- 👇 COMPONENT BANNER ---
 const Banner = () => (
     <div className="relative w-full h-[250px] md:h-[350px] rounded-3xl overflow-hidden mb-8 group shadow-2xl">
         <img
-            // Ảnh banner cho Bottoms (Quần) - Bạn có thể thay link ảnh khác nếu muốn
             src="https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=2070&auto=format&fit=crop"
             alt="Bottoms Banner"
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
@@ -52,16 +51,9 @@ const Banner = () => (
         </div>
     </div>
 );
-// --- 👆 KẾT THÚC BANNER ---
 
-const CATEGORY_CHIPS = [
-    "All Bottoms",
-    "Jeans",
-    "Joggers",
-    "Shorts",
-    "Cargos",
-    "Trousers",
-];
+// --- 👇 ĐÃ XÓA 'Cargos' VÀ 'Trousers' Ở ĐÂY ---
+const CATEGORY_CHIPS = ["All Bottoms", "Jeans", "Joggers", "Shorts"];
 
 const SIZES = ["28", "29", "30", "31", "32", "34"];
 

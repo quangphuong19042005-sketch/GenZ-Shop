@@ -12,7 +12,8 @@ const ProductSkeleton = () => (
         <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-1/2"></div>
     </div>
 );
-// --- 👇 COMPONENT BANNER ĐÃ SỬA ---
+
+// --- 👇 COMPONENT BANNER ---
 const Banner = () => (
     <div className="relative w-full h-[300px] md:h-[400px] rounded-3xl overflow-hidden mb-10 group shadow-lg">
         {/* Ảnh nền */}
@@ -60,15 +61,10 @@ const Banner = () => (
     </div>
 );
 // --- 👆 KẾT THÚC BANNER ---
-// --- 👆 KẾT THÚC BANNER ---
 
-const CATEGORY_CHIPS = [
-    "All Tops",
-    "Graphic Tees",
-    "Oversized Hoodies",
-    "Utility Jackets",
-    "Tank Tops",
-];
+// --- 👇 ĐÃ XÓA 'Oversized Hoodies' VÀ 'Utility Jackets' Ở ĐÂY ---
+const CATEGORY_CHIPS = ["All Tops", "Graphic Tees", "Tank Tops"];
+
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
 
 const TopsPage = () => {
