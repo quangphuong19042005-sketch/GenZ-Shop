@@ -2,11 +2,17 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
+// --- 1. Import Component Modal Chi Tiết Hóa Đơn ---
+import OrderDetailsModal from "../components/OrderDetailsModal";
 
 const OrderHistory = () => {
     const { user } = useAuth();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // --- State cho Modal ---
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -56,6 +62,21 @@ const OrderHistory = () => {
                 return "text-red-700 bg-red-100 border border-red-200";
             default:
                 return "text-gray-700 bg-gray-100 border border-gray-200";
+        }
+    };
+
+    // --- 2. Hàm xử lý khi bấm nút "Chi tiết" (Mũi tên) ---
+    const handleViewDetails = async (orderId) => {
+        try {
+            // Gọi API lấy chi tiết đầy đủ của đơn hàng (bao gồm OrderItems)
+            const res = await axios.get(
+                `http://localhost:5165/api/orders/${orderId}`,
+            );
+            setSelectedOrder(res.data); // Lưu thông tin đơn hàng vào state
+            setIsModalOpen(true); // Mở Modal
+        } catch (error) {
+            console.error("Lỗi lấy chi tiết đơn:", error);
+            alert("Không thể tải chi tiết đơn hàng. Vui lòng thử lại sau.");
         }
     };
 
@@ -140,7 +161,6 @@ const OrderHistory = () => {
                                         key={order.id}
                                         className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group"
                                     >
-                                        {/* 👇 HIỂN THỊ MÃ VẬN ĐƠN (A123...) THAY VÌ ID */}
                                         <td className="py-5 px-6 font-bold text-primary">
                                             {order.orderCode
                                                 ? `#${order.orderCode}`
@@ -201,8 +221,16 @@ const OrderHistory = () => {
                                                 {order.status}
                                             </span>
                                         </td>
+
+                                        {/* 👇 CỘT NÚT CHI TIẾT (Đã gắn sự kiện onClick) */}
                                         <td className="py-5 px-6 text-right">
-                                            <button className="text-gray-400 hover:text-primary transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+                                            <button
+                                                onClick={() =>
+                                                    handleViewDetails(order.id)
+                                                }
+                                                className="text-gray-400 hover:text-primary transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                                                title="Xem chi tiết hóa đơn"
+                                            >
                                                 <span className="material-symbols-outlined">
                                                     arrow_forward_ios
                                                 </span>
@@ -215,6 +243,13 @@ const OrderHistory = () => {
                     </div>
                 </div>
             )}
+
+            {/* --- 3. Component Modal Popup (Đặt ở cuối trang) --- */}
+            <OrderDetailsModal
+                isOpen={isModalOpen}
+                order={selectedOrder}
+                onClose={() => setIsModalOpen(false)}
+            />
         </div>
     );
 };

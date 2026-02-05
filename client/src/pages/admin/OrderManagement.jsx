@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+// 1. Import Component Modal
+import OrderDetailsModal from "../../components/OrderDetailsModal";
 
 const OrderManagement = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // --- State cho Modal chi tiết ---
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     // --- 1. Load dữ liệu từ API ---
     useEffect(() => {
@@ -21,35 +27,47 @@ const OrderManagement = () => {
         }
     };
 
-    // --- 2. Xử lý đổi trạng thái ---
+    // --- 2. Xử lý Xem chi tiết (MỚI THÊM) ---
+    const handleViewDetails = async (id) => {
+        try {
+            // Gọi API lấy chi tiết đơn hàng (bao gồm OrderItems)
+            // Vì list bên ngoài có thể không chứa list sản phẩm con
+            const res = await axios.get(
+                `http://localhost:5165/api/orders/${id}`,
+            );
+            setSelectedOrder(res.data); // Lưu data vào state
+            setIsModalOpen(true); // Mở modal
+        } catch (error) {
+            console.error("Lỗi xem chi tiết:", error);
+            alert("Không thể tải chi tiết đơn hàng.");
+        }
+    };
+
+    // --- 3. Xử lý đổi trạng thái ---
     const handleStatusChange = async (id, newStatus) => {
         try {
-            // Backend nhận [FromBody] string, nên cần gửi string JSON và header đúng
             await axios.put(
                 `http://localhost:5165/api/orders/${id}/status`,
                 JSON.stringify(newStatus),
                 { headers: { "Content-Type": "application/json" } },
             );
 
-            // Cập nhật giao diện ngay lập tức
             setOrders(
                 orders.map((order) =>
                     order.id === id ? { ...order, status: newStatus } : order,
                 ),
             );
-            // alert("Cập nhật trạng thái thành công!"); // Có thể bật nếu muốn thông báo
         } catch (error) {
             console.error("Lỗi cập nhật:", error);
             alert("Không thể cập nhật trạng thái.");
         }
     };
 
-    // --- 3. Xử lý xóa đơn hàng ---
+    // --- 4. Xử lý xóa đơn hàng ---
     const handleDelete = async (id) => {
         if (window.confirm("Bạn có chắc chắn muốn xóa đơn hàng này?")) {
             try {
                 await axios.delete(`http://localhost:5165/api/orders/${id}`);
-                // Xóa khỏi state để giao diện tự mất dòng đó
                 setOrders(orders.filter((order) => order.id !== id));
             } catch (error) {
                 console.error("Lỗi xóa:", error);
@@ -58,11 +76,11 @@ const OrderManagement = () => {
         }
     };
 
-    // --- 4. Tạo dữ liệu mẫu (Nút phụ) ---
+    // --- 5. Tạo dữ liệu mẫu ---
     const handleSeedData = async () => {
         try {
             await axios.post("http://localhost:5165/api/orders/seed");
-            fetchOrders(); // Tải lại bảng
+            fetchOrders();
             alert("Đã tạo dữ liệu mẫu!");
         } catch (error) {
             alert("Lỗi khi tạo dữ liệu mẫu hoặc dữ liệu đã tồn tại.");
@@ -87,8 +105,9 @@ const OrderManagement = () => {
             case "Pending":
                 return "text-yellow-700 bg-yellow-100 border border-yellow-200";
             case "Completed":
+            case "Delivered":
                 return "text-green-700 bg-green-100 border border-green-200";
-            case "Shipped": // Đảm bảo khớp với backend (Shipped hoặc Shipping)
+            case "Shipped":
             case "Shipping":
                 return "text-blue-700 bg-blue-100 border border-blue-200";
             case "Cancelled":
@@ -148,10 +167,11 @@ const OrderManagement = () => {
                                     className="hover:bg-gray-50 dark:hover:bg-[#282e39]/50 transition-colors"
                                 >
                                     <td className="px-6 py-4 font-bold text-primary">
-                                        #{order.id}
+                                        {order.orderCode
+                                            ? `#${order.orderCode}`
+                                            : `#${order.id}`}
                                     </td>
                                     <td className="px-6 py-4">
-                                        {/* Hiển thị Tên + SĐT */}
                                         <div className="flex flex-col">
                                             <span className="font-bold text-slate-900 dark:text-white">
                                                 {order.recipientName}
@@ -168,7 +188,6 @@ const OrderManagement = () => {
                                         ${order.totalAmount}
                                     </td>
 
-                                    {/* Cột Trạng thái: Dùng Select để Admin sửa nhanh */}
                                     <td className="px-6 py-4">
                                         <select
                                             value={order.status}
@@ -183,8 +202,14 @@ const OrderManagement = () => {
                                             <option value="Pending">
                                                 Pending
                                             </option>
+                                            <option value="Shipping">
+                                                Shipping
+                                            </option>
                                             <option value="Shipped">
                                                 Shipped
+                                            </option>
+                                            <option value="Delivered">
+                                                Delivered
                                             </option>
                                             <option value="Completed">
                                                 Completed
@@ -197,6 +222,19 @@ const OrderManagement = () => {
 
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
+                                            {/* Nút Xem Chi Tiết (MỚI) */}
+                                            <button
+                                                onClick={() =>
+                                                    handleViewDetails(order.id)
+                                                }
+                                                className="text-blue-500 hover:bg-blue-50 p-2 rounded transition-colors"
+                                                title="Xem chi tiết"
+                                            >
+                                                <span className="material-symbols-outlined text-[20px]">
+                                                    visibility
+                                                </span>
+                                            </button>
+
                                             {/* Nút Xóa */}
                                             <button
                                                 onClick={() =>
@@ -217,6 +255,13 @@ const OrderManagement = () => {
                     </tbody>
                 </table>
             </div>
+
+            {/* 6. Nhúng Modal vào cuối trang */}
+            <OrderDetailsModal
+                isOpen={isModalOpen}
+                order={selectedOrder}
+                onClose={() => setIsModalOpen(false)}
+            />
         </div>
     );
 };
