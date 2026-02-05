@@ -4,7 +4,7 @@ import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import ProductCard from "../components/ProductCard";
 
-// Skeleton Loading Component
+// Skeleton Loading
 const ProductSkeleton = () => (
     <div className="flex flex-col gap-4 animate-pulse">
         <div className="w-full aspect-[3/4] bg-gray-200 dark:bg-gray-800 rounded-2xl"></div>
@@ -12,6 +12,55 @@ const ProductSkeleton = () => (
         <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-1/2"></div>
     </div>
 );
+// --- 👇 COMPONENT BANNER ĐÃ SỬA ---
+const Banner = () => (
+    <div className="relative w-full h-[300px] md:h-[400px] rounded-3xl overflow-hidden mb-10 group shadow-lg">
+        {/* Ảnh nền */}
+        <img
+            src="https://plus.unsplash.com/premium_photo-1756085509463-59d0110430ba?q=80&w=715&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+            alt="Tops Banner"
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            onError={(e) => {
+                e.target.src =
+                    "https://via.placeholder.com/1200x400?text=Banner+Image"; // Ảnh dự phòng nếu link lỗi
+            }}
+        />
+
+        {/* Lớp phủ gradient để làm nổi bật chữ */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent"></div>
+
+        {/* Nội dung Banner */}
+        <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-16 z-10">
+            <motion.span
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-yellow-400 font-bold tracking-widest text-xs md:text-sm mb-3 uppercase"
+            >
+                New Arrivals 2024
+            </motion.span>
+            <motion.h1
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-4xl md:text-6xl font-black text-white mb-4 italic tracking-tighter drop-shadow-lg"
+            >
+                STREETWEAR <br /> COLLECTION
+            </motion.h1>
+            <motion.p
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 }}
+                className="text-gray-200 text-sm md:text-base font-medium max-w-lg line-clamp-2 drop-shadow-md"
+            >
+                Khẳng định phong cách với những mẫu áo mới nhất. Freeship cho
+                đơn hàng từ 500k.
+            </motion.p>
+        </div>
+    </div>
+);
+// --- 👆 KẾT THÚC BANNER ---
+// --- 👆 KẾT THÚC BANNER ---
 
 const CATEGORY_CHIPS = [
     "All Tops",
@@ -23,30 +72,23 @@ const CATEGORY_CHIPS = [
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
 
 const TopsPage = () => {
-    // --- STATE ---
     const [allProducts, setAllProducts] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    // --- FILTER & SORT ---
     const [selectedCategory, setSelectedCategory] = useState("All Tops");
     const [selectedSize, setSelectedSize] = useState("");
     const [sortOption, setSortOption] = useState("default");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 8;
 
-    // --- FETCH API ---
     useEffect(() => {
         const fetchTops = async () => {
             try {
                 const res = await axios.get(
                     "http://localhost:5165/api/products",
                 );
-
-                // Lọc sản phẩm thuộc Tops và đang Active
                 const topsOnly = res.data.filter(
                     (p) => p.category === "Tops" && p.isActive === true,
                 );
-
                 setAllProducts(topsOnly);
             } catch (error) {
                 console.error("Lỗi fetching data:", error);
@@ -57,11 +99,8 @@ const TopsPage = () => {
         fetchTops();
     }, []);
 
-    // --- CORE LOGIC (FILTER & SORT) ---
     const processedProducts = useMemo(() => {
         let result = [...allProducts];
-
-        // 1. Filter Category (Tìm kiếm theo tên sản phẩm dựa trên Category Chip)
         if (selectedCategory !== "All Tops") {
             const keyword = selectedCategory.toLowerCase();
             const searchTerms = keyword.split(" ").filter((w) => w.length > 2);
@@ -70,18 +109,13 @@ const TopsPage = () => {
                 return searchTerms.some((term) => productName.includes(term));
             });
         }
-
-        // 2. Filter Size (ĐÃ SỬA: Lọc dựa trên bảng variants)
         if (selectedSize) {
             result = result.filter((p) =>
-                // Giữ lại sản phẩm nếu có ít nhất 1 biến thể đúng Size và còn hàng
                 p.variants?.some(
                     (v) => v.size === selectedSize && v.stockQuantity > 0,
                 ),
             );
         }
-
-        // 3. Sort
         switch (sortOption) {
             case "price-asc":
                 result.sort((a, b) => a.price - b.price);
@@ -95,11 +129,9 @@ const TopsPage = () => {
             default:
                 break;
         }
-
         return result;
     }, [allProducts, selectedCategory, selectedSize, sortOption]);
 
-    // --- PAGINATION ---
     const totalPages = Math.ceil(processedProducts.length / itemsPerPage) || 1;
     const paginatedProducts = processedProducts.slice(
         (currentPage - 1) * itemsPerPage,
@@ -137,46 +169,34 @@ const TopsPage = () => {
                 </span>
             </nav>
 
-            {/* Header & Filter Chips */}
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10"
-            >
-                <div>
-                    <h1 className="text-6xl font-black tracking-tighter mb-2 italic text-slate-900 dark:text-white">
-                        TOPS
-                    </h1>
-                    <p className="text-slate-500 font-medium">
-                        {loading
-                            ? "Loading..."
-                            : `${processedProducts.length} items found`}
-                    </p>
-                </div>
+            {/* 👇 CHÈN BANNER VÀO ĐÂY */}
+            <Banner />
 
-                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+            {/* Filter Chips - Đưa xuống dưới Banner */}
+            <div className="flex justify-between items-end mb-8">
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 w-full md:w-auto">
                     {CATEGORY_CHIPS.map((chip) => (
                         <motion.button
                             key={chip}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => setSelectedCategory(chip)}
-                            className={`px-6 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-colors shadow-sm ${
+                            className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors shadow-sm border ${
                                 selectedCategory === chip
-                                    ? "bg-primary text-white shadow-lg shadow-primary/30"
-                                    : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                    ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900"
+                                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-400"
                             }`}
                         >
                             {chip}
                         </motion.button>
                     ))}
                 </div>
-            </motion.div>
+            </div>
 
-            <div className="flex gap-10">
+            <div className="flex flex-col lg:flex-row gap-10">
                 {/* Sidebar Filter */}
-                <aside className="w-64 shrink-0 hidden lg:block sticky top-28 h-fit">
-                    <div className="flex items-center justify-between mb-8">
+                <aside className="w-full lg:w-64 shrink-0 hidden lg:block sticky top-28 h-fit">
+                    <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                             Filters
                         </h3>
@@ -192,8 +212,8 @@ const TopsPage = () => {
                         </button>
                     </div>
 
-                    <div className="mb-10">
-                        <h4 className="text-xs font-extrabold uppercase text-slate-400 mb-4">
+                    <div className="mb-8">
+                        <h4 className="text-xs font-extrabold uppercase text-slate-400 mb-3">
                             Size
                         </h4>
                         <div className="grid grid-cols-4 gap-2">
@@ -202,13 +222,13 @@ const TopsPage = () => {
                                     key={size}
                                     onClick={() =>
                                         setSelectedSize(
-                                            size === selectedSize ? "" : size,
+                                            selectedSize === size ? "" : size,
                                         )
                                     }
-                                    className={`h-10 border rounded-lg text-xs font-bold transition-all ${
+                                    className={`h-9 border rounded-md text-xs font-bold transition-all ${
                                         selectedSize === size
-                                            ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900"
-                                            : "border-slate-200 dark:border-slate-800 text-slate-500 hover:border-primary"
+                                            ? "bg-slate-900 text-white border-slate-900"
+                                            : "border-slate-200 text-slate-600 hover:border-slate-900"
                                     }`}
                                 >
                                     {size}
@@ -221,22 +241,22 @@ const TopsPage = () => {
                 {/* Main Content */}
                 <div className="flex-1">
                     {/* Sort Bar */}
-                    <div className="flex items-center justify-between mb-8 bg-slate-100/50 dark:bg-slate-800/50 p-4 rounded-xl">
-                        <p className="text-sm text-slate-700 dark:text-slate-300">
-                            Page{" "}
+                    <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-800">
+                        <p className="text-sm text-slate-500">
+                            Showing{" "}
                             <span className="font-bold text-slate-900 dark:text-white">
-                                {currentPage}
+                                {processedProducts.length}
                             </span>{" "}
-                            of {totalPages}
+                            results
                         </p>
                         <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-slate-500">
+                            <span className="text-sm font-medium text-slate-500 hidden sm:inline">
                                 Sort by:
                             </span>
                             <select
                                 value={sortOption}
                                 onChange={(e) => setSortOption(e.target.value)}
-                                className="bg-transparent border-none text-sm font-bold cursor-pointer text-slate-900 dark:text-white outline-none hover:text-primary focus:ring-0"
+                                className="bg-transparent text-sm font-bold cursor-pointer text-slate-900 dark:text-white outline-none focus:ring-0 text-right"
                             >
                                 <option value="default">Default</option>
                                 <option value="newest">Newest</option>
@@ -252,73 +272,59 @@ const TopsPage = () => {
 
                     {/* Products Grid */}
                     {loading ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-10">
                             {[...Array(8)].map((_, i) => (
                                 <ProductSkeleton key={i} />
                             ))}
                         </div>
                     ) : paginatedProducts.length === 0 ? (
-                        <div className="text-center py-20">
-                            <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">
+                        <div className="text-center py-20 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                            <span className="material-symbols-outlined text-6xl text-slate-300 mb-4">
                                 search_off
                             </span>
                             <h3 className="text-xl font-bold mb-2 text-slate-900 dark:text-white">
                                 No items found
                             </h3>
-                            <p className="text-gray-500">
+                            <p className="text-slate-500">
                                 Try adjusting your filters.
                             </p>
                         </div>
                     ) : (
-                        <motion.div
-                            layout
-                            className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8"
-                        >
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-10">
                             <AnimatePresence mode="popLayout">
                                 {paginatedProducts.map((product) => (
                                     <motion.div
                                         layout
                                         key={product.id}
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.9 }}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
                                         transition={{ duration: 0.3 }}
                                     >
                                         <ProductCard product={product} />
                                     </motion.div>
                                 ))}
                             </AnimatePresence>
-                        </motion.div>
+                        </div>
                     )}
 
                     {/* Pagination */}
                     {!loading && totalPages > 1 && (
-                        <div className="mt-20 flex justify-center items-center gap-4">
+                        <div className="mt-16 flex justify-center items-center gap-2">
                             <button
                                 onClick={() =>
                                     setCurrentPage((p) => Math.max(p - 1, 1))
                                 }
                                 disabled={currentPage === 1}
-                                className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                className="w-10 h-10 flex items-center justify-center rounded-lg border border-slate-200 hover:border-slate-900 hover:bg-slate-900 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                             >
-                                <span className="material-symbols-outlined">
+                                <span className="material-symbols-outlined text-sm">
                                     chevron_left
                                 </span>
                             </button>
-                            <div className="flex gap-2">
-                                {Array.from(
-                                    { length: totalPages },
-                                    (_, i) => i + 1,
-                                ).map((page) => (
-                                    <button
-                                        key={page}
-                                        onClick={() => setCurrentPage(page)}
-                                        className={`w-10 h-10 rounded-full font-bold transition-all ${currentPage === page ? "bg-primary text-white shadow-lg shadow-primary/40" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-                                    >
-                                        {page}
-                                    </button>
-                                ))}
-                            </div>
+                            <span className="text-sm font-bold px-4">
+                                Page {currentPage} / {totalPages}
+                            </span>
                             <button
                                 onClick={() =>
                                     setCurrentPage((p) =>
@@ -326,9 +332,9 @@ const TopsPage = () => {
                                     )
                                 }
                                 disabled={currentPage === totalPages}
-                                className="w-10 h-10 flex items-center justify-center rounded-full border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                className="w-10 h-10 flex items-center justify-center rounded-lg border border-slate-200 hover:border-slate-900 hover:bg-slate-900 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                             >
-                                <span className="material-symbols-outlined">
+                                <span className="material-symbols-outlined text-sm">
                                     chevron_right
                                 </span>
                             </button>
