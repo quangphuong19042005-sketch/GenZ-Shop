@@ -99,10 +99,17 @@ const TopsPage = () => {
         let result = [...allProducts];
         if (selectedCategory !== "All Tops") {
             const keyword = selectedCategory.toLowerCase();
+            // Tách từ khóa: "Graphic Tees" -> ["graphic", "tees"]
             const searchTerms = keyword.split(" ").filter((w) => w.length > 2);
+
             result = result.filter((p) => {
-                const productName = p.name.toLowerCase();
-                return searchTerms.some((term) => productName.includes(term));
+                const name = p.name ? p.name.toLowerCase() : "";
+                const desc = p.description ? p.description.toLowerCase() : ""; // 👇 Tìm thêm trong mô tả
+
+                // Chỉ cần tên HOẶC mô tả chứa từ khóa là được
+                return searchTerms.some(
+                    (term) => name.includes(term) || desc.includes(term),
+                );
             });
         }
         if (selectedSize) {
