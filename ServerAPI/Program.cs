@@ -14,9 +14,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
-        policy => policy.WithOrigins("http://localhost:5173") // Cổng của React
-                        .AllowAnyMethod()
-                        .AllowAnyHeader());
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:5173") // Link frontend của bạn
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
 });
 
 // 👇 3. QUAN TRỌNG: Cấu hình JSON để chặn lỗi vòng lặp (Fix lỗi 500)

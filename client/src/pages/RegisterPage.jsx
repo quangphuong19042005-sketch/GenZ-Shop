@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import axiosClient from "../api/axiosClient"; // Đảm bảo file này đã được tạo ở Bước 1
 
 const RegisterPage = () => {
     const navigate = useNavigate();
@@ -13,37 +13,42 @@ const RegisterPage = () => {
         confirmPassword: "",
     });
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+        setError("");
     };
 
     const handleRegister = async (e) => {
         e.preventDefault();
+
         if (formData.password !== formData.confirmPassword) {
-            alert("Mật khẩu nhập lại không khớp!");
+            setError("Mật khẩu nhập lại không khớp!");
             return;
         }
 
         setLoading(true);
+        setError("");
+
         try {
-            const res = await axios.post(
-                "http://localhost:5165/api/auth/register",
-                {
-                    fullName: formData.fullName,
-                    username: formData.username,
-                    email: formData.email,
-                    phone: formData.phone,
-                    password: formData.password,
-                },
-            );
+            const res = await axiosClient.post("/api/auth/register", {
+                fullName: formData.fullName,
+                username: formData.username,
+                email: formData.email,
+                phone: formData.phone,
+                password: formData.password,
+            });
 
             if (res.data.success) {
                 alert("🎉 Đăng ký thành công! Vui lòng đăng nhập.");
                 navigate("/auth/login");
             }
-        } catch (error) {
-            alert(error.response?.data?.message || "Đăng ký thất bại");
+        } catch (err) {
+            const msg =
+                err.response?.data?.message ||
+                "Đăng ký thất bại. Vui lòng thử lại.";
+            setError(msg);
         } finally {
             setLoading(false);
         }
@@ -60,6 +65,15 @@ const RegisterPage = () => {
                 </p>
             </div>
 
+            {error && (
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm flex items-center gap-2 animate-pulse">
+                    <span className="material-symbols-outlined text-lg">
+                        error
+                    </span>
+                    {error}
+                </div>
+            )}
+
             <form onSubmit={handleRegister} className="flex flex-col gap-4">
                 <input
                     required
@@ -67,7 +81,7 @@ const RegisterPage = () => {
                     type="text"
                     placeholder="Họ và tên"
                     onChange={handleChange}
-                    className="p-3 border rounded-lg dark:bg-slate-800 dark:text-white"
+                    className="p-3 border rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-slate-900 outline-none transition-all"
                 />
                 <input
                     required
@@ -75,7 +89,7 @@ const RegisterPage = () => {
                     type="text"
                     placeholder="Tên đăng nhập"
                     onChange={handleChange}
-                    className="p-3 border rounded-lg dark:bg-slate-800 dark:text-white"
+                    className="p-3 border rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-slate-900 outline-none transition-all"
                 />
                 <input
                     required
@@ -83,7 +97,7 @@ const RegisterPage = () => {
                     type="email"
                     placeholder="Email"
                     onChange={handleChange}
-                    className="p-3 border rounded-lg dark:bg-slate-800 dark:text-white"
+                    className="p-3 border rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-slate-900 outline-none transition-all"
                 />
                 <input
                     required
@@ -91,7 +105,7 @@ const RegisterPage = () => {
                     type="text"
                     placeholder="Số điện thoại"
                     onChange={handleChange}
-                    className="p-3 border rounded-lg dark:bg-slate-800 dark:text-white"
+                    className="p-3 border rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-slate-900 outline-none transition-all"
                 />
                 <input
                     required
@@ -99,7 +113,7 @@ const RegisterPage = () => {
                     type="password"
                     placeholder="Mật khẩu"
                     onChange={handleChange}
-                    className="p-3 border rounded-lg dark:bg-slate-800 dark:text-white"
+                    className="p-3 border rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-slate-900 outline-none transition-all"
                 />
                 <input
                     required
@@ -107,22 +121,26 @@ const RegisterPage = () => {
                     type="password"
                     placeholder="Nhập lại mật khẩu"
                     onChange={handleChange}
-                    className="p-3 border rounded-lg dark:bg-slate-800 dark:text-white"
+                    className="p-3 border rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-slate-900 outline-none transition-all"
                 />
 
                 <button
                     disabled={loading}
-                    className="bg-primary text-white py-3 rounded-lg font-bold hover:bg-blue-600 transition-colors"
+                    className={`bg-slate-900 dark:bg-white text-white dark:text-black py-3 rounded-lg font-bold hover:opacity-90 transition-all flex justify-center items-center shadow-lg ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
                 >
-                    {loading ? "Đang xử lý..." : "ĐĂNG KÝ NGAY"}
+                    {loading ? (
+                        <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    ) : (
+                        "ĐĂNG KÝ NGAY"
+                    )}
                 </button>
             </form>
 
-            <div className="text-center text-sm">
+            <div className="text-center text-sm text-gray-500">
                 Đã có tài khoản?{" "}
                 <Link
                     to="/auth/login"
-                    className="text-primary font-bold hover:underline"
+                    className="text-slate-900 dark:text-white font-bold hover:underline"
                 >
                     Đăng nhập
                 </Link>
@@ -131,4 +149,4 @@ const RegisterPage = () => {
     );
 };
 
-export default RegisterPage; // 👈 DÒNG QUAN TRỌNG ĐỂ SỬA LỖI
+export default RegisterPage;

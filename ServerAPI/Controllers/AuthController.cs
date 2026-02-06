@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using ServerAPI.Data;
 using ServerAPI.Models;
 using ServerAPI.Models.DTO;
+// 👇 1. Đảm bảo đã import thư viện này
+using BCrypt.Net; 
 
 namespace ServerAPI.Controllers
 {
@@ -19,7 +21,6 @@ namespace ServerAPI.Controllers
 
         // ==========================================
         // 1. REGISTER
-        // POST: api/auth/register
         // ==========================================
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest req)
@@ -36,6 +37,9 @@ namespace ServerAPI.Controllers
                 return BadRequest(new { message = "Email is already in use!" });
             }
 
+            // 👇 2. MÃ HÓA MẬT KHẨU TẠI ĐÂY
+            string passwordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
+
             // Create new User
             var user = new User
             {
@@ -43,9 +47,12 @@ namespace ServerAPI.Controllers
                 Email = req.Email,
                 FullName = req.FullName,
                 Phone = req.Phone,
-                PasswordHash = req.Password, // Note: Use encryption in production
+                
+                // 👇 3. LƯU MẬT KHẨU ĐÃ MÃ HÓA (KHÔNG LƯU req.Password)
+                PasswordHash = passwordHash, 
+                
                 Role = "member",
-                MembershipTier = "Silver", // Default tier
+                MembershipTier = "Silver",
                 LoyaltyPoints = 0,
                 CreatedAt = DateTime.Now
             };
@@ -58,7 +65,6 @@ namespace ServerAPI.Controllers
 
         // ==========================================
         // 2. LOGIN
-        // POST: api/auth/login
         // ==========================================
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
@@ -68,7 +74,8 @@ namespace ServerAPI.Controllers
                 .FirstOrDefaultAsync(u => u.Username == req.Username);
 
             // Verify password
-            if (user == null || user.PasswordHash != req.Password)
+            // 👇 4. KIỂM TRA MẬT KHẨU BẰNG HÀM VERIFY (Không dùng so sánh ==)
+            if (user == null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
             {
                 return Unauthorized(new { success = false, message = "Incorrect username or password" });
             }
@@ -85,14 +92,13 @@ namespace ServerAPI.Controllers
                     role = user.Role,
                     fullName = user.FullName,
                     membershipTier = user.MembershipTier,
-                    loyaltyPoints = user.LoyaltyPoints // return points for VIP display
+                    loyaltyPoints = user.LoyaltyPoints
                 }
             });
         }
 
         // ==========================================
-        // 3. UPGRADE VIP (For VIP Page)
-        // POST: api/auth/upgrade-vip/{userId}
+        // 3. UPGRADE VIP
         // ==========================================
         [HttpPost("upgrade-vip/{userId}")]
         public async Task<IActionResult> UpgradeToVip(int userId)
@@ -100,11 +106,10 @@ namespace ServerAPI.Controllers
             var user = await _context.Users.FindAsync(userId);
             if (user == null) return NotFound(new { message = "User not found" });
 
-            // Logic: Upgrade only if currently Silver or Member
             if (user.MembershipTier == "Silver" || user.MembershipTier == "Member")
             {
                 user.MembershipTier = "Gold";
-                user.LoyaltyPoints += 500; // Bonus 500 points
+                user.LoyaltyPoints += 500;
                 
                 _context.Users.Update(user);
                 await _context.SaveChangesAsync();

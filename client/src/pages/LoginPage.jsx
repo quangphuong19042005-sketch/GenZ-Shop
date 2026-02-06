@@ -1,47 +1,68 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext"; // Đảm bảo đường dẫn đúng tới file Context
 
 const LoginPage = () => {
+    // 1. Khai báo State
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
-
-    // 1. Thêm state để hiện loading khi bấm nút
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // 2. Lấy hàm login từ AuthContext và hàm điều hướng
     const { login } = useAuth();
     const navigate = useNavigate();
 
-    // 2. Thêm từ khóa ASYNC ở đây
+    // 3. Xử lý khi bấm nút Sign In
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError(""); // Xóa lỗi cũ
-        setIsSubmitting(true); // Bật loading
+        setError("");
+        setIsSubmitting(true);
 
-        // 3. Thêm từ khóa AWAIT ở đây (đợi Server trả lời)
-        const result = await login(username, password);
+        try {
+            // Gọi hàm login từ AuthContext (Hàm này sẽ gọi API backend)
+            const result = await login(username, password);
 
-        if (result.success) {
-            navigate("/");
-        } else {
-            // Nếu lỗi, hiện thông báo và tắt loading
-            setError(result.message || "Đăng nhập thất bại");
+            if (result.success) {
+                // 🎉 Đăng nhập thành công -> Chuyển hướng
+                // Kiểm tra role để chuyển về trang Admin hoặc trang chủ
+                if (result.user?.role === "admin") {
+                    navigate("/");
+                } else {
+                    navigate("/");
+                }
+            } else {
+                // ❌ Đăng nhập thất bại (Backend trả về success: false)
+                // Hiển thị thông báo lỗi cụ thể từ Backend gửi lên
+                setError(
+                    result.message || "Tên đăng nhập hoặc mật khẩu không đúng.",
+                );
+            }
+        } catch (err) {
+            // 💥 Lỗi mạng hoặc lỗi hệ thống khác
+            console.error("Lỗi đăng nhập:", err);
+            setError("Lỗi kết nối đến Server. Vui lòng thử lại sau.");
+        } finally {
+            // Tắt trạng thái loading dù thành công hay thất bại
             setIsSubmitting(false);
         }
     };
 
+    // 4. Giao diện (JSX)
     return (
-        <div className="w-full">
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-2 uppercase">
-                Welcome Back
-            </h2>
-            <p className="text-gray-500 mb-8 text-sm">
-                Please enter your details to sign in.
-            </p>
+        <div className="w-full max-w-md mx-auto py-10 px-4">
+            <div className="mb-8 text-center md:text-left">
+                <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-2 uppercase">
+                    Welcome Back
+                </h2>
+                <p className="text-gray-500 text-sm">
+                    Please enter your details to sign in.
+                </p>
+            </div>
 
+            {/* Hiển thị thông báo lỗi nếu có */}
             {error && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 text-sm flex items-center gap-2">
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 text-sm flex items-center gap-2 animate-pulse">
                     <span className="material-symbols-outlined text-lg">
                         error
                     </span>
@@ -49,58 +70,75 @@ const LoginPage = () => {
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                {/* Input Username */}
                 <div>
-                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1">
+                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1.5">
                         Username
                     </label>
                     <input
                         type="text"
-                        className="w-full bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-transparent dark:text-white"
-                        placeholder="user1"
+                        className="w-full bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 outline-none dark:text-white transition-all"
+                        placeholder="Nhập tên đăng nhập"
                         value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        required
-                        disabled={isSubmitting} // Khóa input khi đang gửi
-                    />
-                </div>
-                <div>
-                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1">
-                        Password
-                    </label>
-                    <input
-                        type="password"
-                        className="w-full bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-transparent dark:text-white"
-                        placeholder="••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={(e) => {
+                            setUsername(e.target.value);
+                            setError(""); // Xóa lỗi khi người dùng gõ lại
+                        }}
                         required
                         disabled={isSubmitting}
                     />
                 </div>
 
+                {/* Input Password */}
+                <div>
+                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1.5">
+                        Password
+                    </label>
+                    <input
+                        type="password"
+                        className="w-full bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900 outline-none dark:text-white transition-all"
+                        placeholder="••••••"
+                        value={password}
+                        onChange={(e) => {
+                            setPassword(e.target.value);
+                            setError("");
+                        }}
+                        required
+                        disabled={isSubmitting}
+                    />
+                </div>
+
+                {/* Remember me & Forgot Password */}
                 <div className="flex justify-between items-center text-xs">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
                         <input
                             type="checkbox"
-                            className="rounded border-gray-300 text-primary focus:ring-primary"
+                            className="rounded border-gray-300 text-slate-900 focus:ring-slate-900 accent-slate-900"
                         />
                         <span className="text-gray-500">Remember me</span>
                     </label>
-                    <a
-                        href="#"
-                        className="text-primary font-bold hover:underline"
+                    <Link
+                        to="/auth/forgot-password"
+                        className="text-slate-900 dark:text-white font-bold hover:underline"
                     >
                         Forgot Password?
-                    </a>
+                    </Link>
                 </div>
 
+                {/* Submit Button */}
                 <button
                     type="submit"
-                    disabled={isSubmitting} // Khóa nút khi đang gửi
-                    className={`bg-slate-900 dark:bg-white text-white dark:text-black font-bold py-3 rounded-lg hover:opacity-90 transition-all mt-2 flex justify-center items-center ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""}`}
+                    disabled={isSubmitting}
+                    className={`bg-slate-900 dark:bg-white text-white dark:text-black font-bold py-3.5 rounded-lg hover:opacity-90 transition-all flex justify-center items-center shadow-lg hover:shadow-xl hover:-translate-y-0.5 ${
+                        isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+                    }`}
                 >
-                    {isSubmitting ? "Signing in..." : "Sign In"}
+                    {isSubmitting ? (
+                        <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    ) : (
+                        "Sign In"
+                    )}
                 </button>
             </form>
 
@@ -108,7 +146,7 @@ const LoginPage = () => {
                 Don't have an account?{" "}
                 <Link
                     to="/auth/register"
-                    className="text-primary font-bold hover:underline"
+                    className="text-slate-900 dark:text-white font-bold hover:underline"
                 >
                     Create account
                 </Link>

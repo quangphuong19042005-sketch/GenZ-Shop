@@ -35,6 +35,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 const AdminRoute = ({ children }) => {
     const { user } = useAuth();
+    console.log("Check Admin Route - User:", user);
+    console.log("Check Admin Route - Role:", user?.role);
     if (!user || user.role !== "admin") {
         return <Navigate to="/" />;
     }
