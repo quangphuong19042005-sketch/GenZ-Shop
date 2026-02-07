@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import axiosClient from "../../api/axiosClient"; // 👇 1. Dùng axiosClient chuẩn
+import { useAuth } from "../../context/AuthContext"; // 👇 2. Lấy info admin đang đăng nhập
 
 const CustomerManagement = () => {
     const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // 1. Fetch data from Server
+    // Lấy thông tin admin hiện tại để tránh tự xóa/hạ quyền chính mình
+    const { user: currentUser } = useAuth();
+
+    // 1. Fetch data (Sửa đường dẫn thành /api/user cho khớp với Controller)
     const fetchCustomers = async () => {
         try {
-            const res = await axios.get("http://localhost:5165/api/users");
-            setCustomers(res.data);
+            const res = await axiosClient.get("/api/user");
+            setCustomers(res.data.users); // Backend trả về { success: true, users: [...] }
             setLoading(false);
         } catch (error) {
             console.error("Error fetching customers:", error);
@@ -31,9 +35,9 @@ const CustomerManagement = () => {
             return;
 
         try {
-            await axios.delete(`http://localhost:5165/api/users/${id}`);
+            await axiosClient.delete(`/api/user/${id}`); // Sửa lại endpoint nếu cần
             alert("User deleted successfully!");
-            fetchCustomers(); // Refresh the list
+            fetchCustomers();
         } catch (error) {
             alert(
                 "Error deleting user: " +
@@ -42,7 +46,36 @@ const CustomerManagement = () => {
         }
     };
 
-    // Helper: Dynamic colors for membership tiers
+    // 👇 3. HÀM MỚI: Cập nhật quyền (Phân quyền)
+    const handleUpdateRole = async (userId, newRole) => {
+        const action =
+            newRole === "admin"
+                ? "Thăng chức lên ADMIN"
+                : "Hạ chức xuống MEMBER";
+        if (!window.confirm(`Bạn có chắc muốn ${action} cho user này?`)) return;
+
+        try {
+            const res = await axiosClient.put(
+                `/api/user/update-role/${userId}`,
+                {
+                    role: newRole,
+                },
+            );
+
+            if (res.data.success) {
+                alert(`Thành công! User đã được cập nhật thành ${newRole}.`);
+                fetchCustomers(); // Load lại bảng ngay lập tức
+            }
+        } catch (error) {
+            alert(
+                "Lỗi: " +
+                    (error.response?.data?.message ||
+                        "Không thể cập nhật quyền"),
+            );
+        }
+    };
+
+    // Helper: Dynamic colors
     const getTierColor = (tier) => {
         switch (tier) {
             case "Diamond":
@@ -57,9 +90,9 @@ const CustomerManagement = () => {
     };
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 p-6">
             <h1 className="text-2xl font-black text-slate-900 dark:text-white">
-                Customer Management ({customers.length})
+                Customer & Role Management ({customers.length})
             </h1>
 
             <div className="bg-white dark:bg-[#1a2230] rounded-xl shadow-sm border border-gray-200 dark:border-[#282e39] overflow-hidden">
@@ -68,13 +101,13 @@ const CustomerManagement = () => {
                         <thead className="bg-gray-50 dark:bg-[#282e39] text-gray-500 font-bold uppercase text-xs">
                             <tr>
                                 <th className="px-6 py-4">ID</th>
-                                <th className="px-6 py-4">Name</th>
+                                <th className="px-6 py-4">Info</th>
                                 <th className="px-6 py-4">Contact</th>
-                                <th className="px-6 py-4">Total Spent</th>
-                                <th className="px-6 py-4">Tier & Role</th>
-                                <th className="px-6 py-4 text-right">
-                                    Actions
+                                <th className="px-6 py-4">Role & Tier</th>
+                                <th className="px-6 py-4 text-center">
+                                    Set Permissions
                                 </th>
+                                <th className="px-6 py-4 text-right">Delete</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -105,17 +138,30 @@ const CustomerManagement = () => {
                                         <td className="px-6 py-4 font-mono text-gray-400">
                                             #{user.id}
                                         </td>
+
+                                        {/* Cột Info User */}
                                         <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">
                                             <div className="flex items-center gap-3">
-                                                <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold uppercase">
+                                                <div className="size-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold uppercase text-xs">
                                                     {(
                                                         user.fullName ||
-                                                        user.email
+                                                        user.username ||
+                                                        "?"
                                                     ).charAt(0)}
                                                 </div>
-                                                {user.fullName || "No Name"}
+                                                <div className="flex flex-col">
+                                                    <span>
+                                                        {user.fullName ||
+                                                            user.username}
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-400 font-normal">
+                                                        @{user.username}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </td>
+
+                                        {/* Cột Contact */}
                                         <td className="px-6 py-4 text-gray-500">
                                             <div className="flex flex-col">
                                                 <span>{user.email}</span>
@@ -124,23 +170,75 @@ const CustomerManagement = () => {
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 font-bold text-green-600">
-                                            ${user.totalSpent.toLocaleString()}
-                                        </td>
+
+                                        {/* Cột Role & Tier */}
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1 items-start">
+                                                {/* Hiển thị Role Badge */}
+                                                <span
+                                                    className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${
+                                                        user.role === "admin"
+                                                            ? "bg-purple-100 text-purple-700 border-purple-200"
+                                                            : "bg-green-100 text-green-700 border-green-200"
+                                                    }`}
+                                                >
+                                                    {user.role}
+                                                </span>
                                                 <span
                                                     className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${getTierColor(user.membershipTier)}`}
                                                 >
                                                     {user.membershipTier}
                                                 </span>
-                                                <span className="text-xs text-gray-400 capitalize">
-                                                    Role: {user.role}
-                                                </span>
                                             </div>
                                         </td>
+
+                                        {/* 👇 CỘT MỚI: Cấp quyền */}
+                                        <td className="px-6 py-4 text-center">
+                                            {/* Không cho phép sửa chính mình */}
+                                            {currentUser?.id !== user.id ? (
+                                                <>
+                                                    {user.role === "member" ? (
+                                                        <button
+                                                            onClick={() =>
+                                                                handleUpdateRole(
+                                                                    user.id,
+                                                                    "admin",
+                                                                )
+                                                            }
+                                                            className="bg-slate-800 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-700 transition flex items-center gap-1 mx-auto shadow-sm"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[14px]">
+                                                                arrow_upward
+                                                            </span>
+                                                            Make Admin
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() =>
+                                                                handleUpdateRole(
+                                                                    user.id,
+                                                                    "member",
+                                                                )
+                                                            }
+                                                            className="bg-white border border-gray-300 text-gray-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-gray-50 transition flex items-center gap-1 mx-auto"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[14px]">
+                                                                arrow_downward
+                                                            </span>
+                                                            Demote
+                                                        </button>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <span className="text-xs text-gray-400 italic">
+                                                    (You)
+                                                </span>
+                                            )}
+                                        </td>
+
+                                        {/* Cột Xóa */}
                                         <td className="px-6 py-4 text-right">
-                                            {user.role !== "admin" && (
+                                            {currentUser?.id !== user.id && (
                                                 <button
                                                     onClick={() =>
                                                         handleDelete(user.id)

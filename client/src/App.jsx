@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom"; // Bỏ BrowserRouter vì thường nó nằm ở main.jsx/index.jsx
 import { useAuth } from "./context/AuthContext";
 
 // --- LAYOUTS ---
@@ -21,25 +21,37 @@ import OrderHistory from "./pages/OrderHistory";
 import Wishlist from "./pages/Wishlist";
 import SavedAddresses from "./pages/SavedAddresses";
 import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage"; // Import
+import RegisterPage from "./pages/RegisterPage";
 
-// --- ADMIN ---
+// --- ADMIN PAGES ---
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import ProductManagement from "./pages/admin/ProductManagement";
 import OrderManagement from "./pages/admin/OrderManagement";
 import CustomerManagement from "./pages/admin/CustomerManagement";
 import MarketingManagement from "./pages/admin/MarketingManagement";
 import SettingsManagement from "./pages/admin/SettingsManagement";
+// 👇 IMPORT TRANG LOGIN ADMIN MỚI
+import AdminLoginPage from "./pages/admin/AdminLoginPage";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
+// 👇 SỬA LẠI LOGIC ADMIN ROUTE
 const AdminRoute = ({ children }) => {
-    const { user } = useAuth();
-    console.log("Check Admin Route - User:", user);
-    console.log("Check Admin Route - Role:", user?.role);
-    if (!user || user.role !== "admin") {
+    const { user, loading } = useAuth();
+
+    if (loading) return <div>Loading...</div>; // Chờ tải user xong mới check
+
+    // 1. Nếu CHƯA đăng nhập -> Đá sang trang Login Admin (chứ không về Home nữa)
+    if (!user) {
+        return <Navigate to="/admin/login" />;
+    }
+
+    // 2. Nếu ĐÃ đăng nhập nhưng KHÔNG PHẢI Admin -> Đá về Home
+    if (user.role !== "admin") {
         return <Navigate to="/" />;
     }
+
+    // 3. Đúng là Admin -> Cho vào
     return children;
 };
 
@@ -64,9 +76,6 @@ function App() {
                     }
                 />
 
-                {/* ❌ ĐÃ XÓA DÒNG /register Ở ĐÂY */}
-
-                {/* PROFILE */}
                 <Route path="profile" element={<UserProfile />} />
                 <Route path="profile/orders" element={<OrderHistory />} />
                 <Route path="profile/wishlist" element={<Wishlist />} />
@@ -82,14 +91,17 @@ function App() {
                 />
             </Route>
 
-            {/* 2. AUTH (Login & Register - AuthLayout) */}
+            {/* 2. AUTH KHÁCH HÀNG (Login & Register) */}
             <Route path="/auth" element={<AuthLayout />}>
                 <Route path="login" element={<LoginPage />} />
-                {/* ✅ THÊM VÀO ĐÂY (Bỏ dấu / ở đầu) */}
                 <Route path="register" element={<RegisterPage />} />
             </Route>
 
-            {/* 3. ADMIN */}
+            {/* 👇 3. ROUTE RIÊNG CHO LOGIN ADMIN (Nằm ngoài layout chính) */}
+            <Route path="/admin/login" element={<AdminLoginPage />} />
+
+            {/* 4. ADMIN DASHBOARD (Được bảo vệ) */}
+            {/* 4. ADMIN DASHBOARD (Được bảo vệ) */}
             <Route
                 path="/admin"
                 element={
@@ -98,7 +110,12 @@ function App() {
                     </AdminRoute>
                 }
             >
-                <Route index element={<AdminDashboard />} />
+                {/* 👇 1. Sửa dòng này: Tự động chuyển hướng sang dashboard */}
+                <Route index element={<Navigate to="dashboard" replace />} />
+
+                {/* 👇 2. Khai báo rõ ràng route dashboard */}
+                <Route path="dashboard" element={<AdminDashboard />} />
+
                 <Route path="products" element={<ProductManagement />} />
                 <Route path="orders" element={<OrderManagement />} />
                 <Route path="customers" element={<CustomerManagement />} />
