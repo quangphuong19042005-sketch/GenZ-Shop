@@ -30,28 +30,30 @@ import OrderManagement from "./pages/admin/OrderManagement";
 import CustomerManagement from "./pages/admin/CustomerManagement";
 import MarketingManagement from "./pages/admin/MarketingManagement";
 import SettingsManagement from "./pages/admin/SettingsManagement";
+import RoleManagement from "./pages/admin/RoleManagement";
 // 👇 IMPORT TRANG LOGIN ADMIN MỚI
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// 👇 SỬA LẠI LOGIC ADMIN ROUTE
+// 👇 SỬA LẠI LOGIC ADMIN ROUTE: Cho phép Staff, Shipper... truy cập
 const AdminRoute = ({ children }) => {
     const { user, loading } = useAuth();
 
     if (loading) return <div>Loading...</div>; // Chờ tải user xong mới check
 
-    // 1. Nếu CHƯA đăng nhập -> Đá sang trang Login Admin (chứ không về Home nữa)
+    // 1. Nếu CHƯA đăng nhập -> Đá sang trang Login Admin
     if (!user) {
         return <Navigate to="/admin/login" />;
     }
 
-    // 2. Nếu ĐÃ đăng nhập nhưng KHÔNG PHẢI Admin -> Đá về Home
-    if (user.role !== "admin") {
+    // 2. Nếu là MEMBER (Khách hàng) -> Đá về Home (Không cho vào Admin)
+    // Các role khác (admin, staff, shipper, editor...) ĐƯỢC PHÉP vào
+    if (user.role === "member") {
         return <Navigate to="/" />;
     }
 
-    // 3. Đúng là Admin -> Cho vào
+    // 3. Được phép vào
     return children;
 };
 
@@ -100,8 +102,7 @@ function App() {
             {/* 👇 3. ROUTE RIÊNG CHO LOGIN ADMIN (Nằm ngoài layout chính) */}
             <Route path="/admin/login" element={<AdminLoginPage />} />
 
-            {/* 4. ADMIN DASHBOARD (Được bảo vệ) */}
-            {/* 4. ADMIN DASHBOARD (Được bảo vệ) */}
+            {/* 4. ADMIN DASHBOARD (Được bảo vệ bằng AdminRoute mới) */}
             <Route
                 path="/admin"
                 element={
@@ -110,15 +111,14 @@ function App() {
                     </AdminRoute>
                 }
             >
-                {/* 👇 1. Sửa dòng này: Tự động chuyển hướng sang dashboard */}
+                {/* 👇 Tự động chuyển hướng /admin -> /admin/dashboard */}
                 <Route index element={<Navigate to="dashboard" replace />} />
 
-                {/* 👇 2. Khai báo rõ ràng route dashboard */}
                 <Route path="dashboard" element={<AdminDashboard />} />
-
                 <Route path="products" element={<ProductManagement />} />
                 <Route path="orders" element={<OrderManagement />} />
                 <Route path="customers" element={<CustomerManagement />} />
+                <Route path="roles" element={<RoleManagement />} />
                 <Route path="marketing" element={<MarketingManagement />} />
                 <Route path="settings" element={<SettingsManagement />} />
             </Route>

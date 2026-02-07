@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using ServerAPI.Data;
 using ServerAPI.Models;
 using ServerAPI.Models.DTO;
-// 👇 1. Đảm bảo đã import thư viện này
 using BCrypt.Net; 
 
 namespace ServerAPI.Controllers
@@ -25,32 +24,25 @@ namespace ServerAPI.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest req)
         {
-            // Check if Username exists
             if (await _context.Users.AnyAsync(u => u.Username == req.Username))
             {
                 return BadRequest(new { message = "Username already exists!" });
             }
 
-            // Check if Email exists
             if (await _context.Users.AnyAsync(u => u.Email == req.Email))
             {
                 return BadRequest(new { message = "Email is already in use!" });
             }
 
-            // 👇 2. MÃ HÓA MẬT KHẨU TẠI ĐÂY
             string passwordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
 
-            // Create new User
             var user = new User
             {
                 Username = req.Username,
                 Email = req.Email,
                 FullName = req.FullName,
                 Phone = req.Phone,
-                
-                // 👇 3. LƯU MẬT KHẨU ĐÃ MÃ HÓA (KHÔNG LƯU req.Password)
                 PasswordHash = passwordHash, 
-                
                 Role = "member",
                 MembershipTier = "Silver",
                 LoyaltyPoints = 0,
@@ -64,23 +56,40 @@ namespace ServerAPI.Controllers
         }
 
         // ==========================================
-        // 2. LOGIN
+        // 2. LOGIN (ĐÃ SỬA: LẤY THÊM PERMISSIONS)
         // ==========================================
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
         {
-            // Find user by username
+            // 1. Tìm user
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Username == req.Username);
 
-            // Verify password
-            // 👇 4. KIỂM TRA MẬT KHẨU BẰNG HÀM VERIFY (Không dùng so sánh ==)
+            // 2. Check mật khẩu
             if (user == null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
             {
                 return Unauthorized(new { success = false, message = "Incorrect username or password" });
             }
 
-            // Return user info
+            // 👇👇👇 3. PHẦN QUAN TRỌNG MỚI THÊM: LẤY QUYỀN TỪ BẢNG ROLES 👇👇👇
+            string permissions = ""; // Mặc định rỗng
+
+            // Tìm thông tin Role trong bảng Roles (dựa vào user.Role)
+            var roleInfo = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == user.Role);
+            
+            if (roleInfo != null)
+            {
+                permissions = roleInfo.Permissions; // VD: "orders,products"
+            }
+
+            // Nếu là Admin gốc, cấp quyền "all" (full quyền)
+            if (user.Role == "admin") 
+            {
+                permissions = "all";
+            }
+            // 👆👆👆 KẾT THÚC PHẦN MỚI 👆👆👆
+
+            // 4. Trả về kết quả (Kèm permissions)
             return Ok(new
             {
                 success = true,
@@ -92,7 +101,10 @@ namespace ServerAPI.Controllers
                     role = user.Role,
                     fullName = user.FullName,
                     membershipTier = user.MembershipTier,
-                    loyaltyPoints = user.LoyaltyPoints
+                    loyaltyPoints = user.LoyaltyPoints,
+                    
+                    // 👇 Gửi thêm dòng này về Frontend
+                    permissions = permissions 
                 }
             });
         }

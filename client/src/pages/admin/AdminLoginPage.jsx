@@ -1,7 +1,7 @@
 // File: client/src/pages/admin/AdminLoginPage.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext"; // Sửa đường dẫn nếu cần
+import { useAuth } from "../../context/AuthContext";
 
 const AdminLoginPage = () => {
     const [username, setUsername] = useState("");
@@ -18,14 +18,16 @@ const AdminLoginPage = () => {
         const result = await login(username, password);
 
         if (result.success) {
-            // 2. KIỂM TRA QUYỀN ADMIN NGAY LẬP TỨC
-            if (result.user.role === "admin") {
-                navigate("/admin/dashboard"); // Vào trang quản trị
+            // 2. KIỂM TRA QUYỀN (Logic mới)
+            // Thay vì chỉ check === "admin", ta check "không phải là member"
+            // Điều này cho phép admin, staff, shipper, editor... đều được vào.
+            if (result.user.role !== "member") {
+                navigate("/admin"); // Vào trang quản trị
             } else {
-                // Nếu là khách hàng thường mà cố vào đây -> Đăng xuất và báo lỗi
+                // Nếu là khách hàng thường (member) -> Đăng xuất và báo lỗi
                 logout();
                 setError(
-                    "Tài khoản này không có quyền truy cập trang Quản trị!",
+                    "Tài khoản Khách hàng không có quyền truy cập trang Quản trị!",
                 );
             }
         } else {
@@ -52,7 +54,7 @@ const AdminLoginPage = () => {
                             Username
                         </label>
                         <input
-                            className="w-full bg-gray-700 border border-gray-600 rounded p-2 focus:border-blue-500 outline-none"
+                            className="w-full bg-gray-700 border border-gray-600 rounded p-2 focus:border-blue-500 outline-none text-white"
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
@@ -63,13 +65,13 @@ const AdminLoginPage = () => {
                             Password
                         </label>
                         <input
-                            className="w-full bg-gray-700 border border-gray-600 rounded p-2 focus:border-blue-500 outline-none"
+                            className="w-full bg-gray-700 border border-gray-600 rounded p-2 focus:border-blue-500 outline-none text-white"
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                         />
                     </div>
-                    <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded transition-all mt-2">
+                    <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded transition-all mt-2 shadow-lg shadow-blue-500/30">
                         LOGIN TO DASHBOARD
                     </button>
                 </form>
